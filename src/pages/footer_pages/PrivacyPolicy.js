@@ -18,7 +18,7 @@ const PrivacyPolicy = () => {
         
         <h2>Personal Information</h2>
         <p>We may collect personal information from Users in a variety of ways, including, but not limited to, when Users visit our site, fill out a form, and in connection with other activities, services, features or resources that we make available on our Site. Users may be asked for, as appropriate, their name, email address, phone number, address, payment information, and other information that we may deem desirable to collect for the purposes of delivering or enhancing our Site or services. Users may, however, visit our Site without providing this information. We will collect personal information from Users only if they voluntarily submit such information to us. Users can always refuse to supply personal information, except that it may prevent them from engaging in certain Site-related activities, and they will be unable to enroll in the service that we provide.</p>
-        <p>We may use the information we collect for internal reporting services, to create reports about rankings with all identifying information and keywords removed, and to help us help you. Namely, our service is designed to help you understand where you stand with your marketing efforts and to help us know how we can better serve you. Thus, we aggregate certain personal and non-personally identifiable information, in an anonymized form, to help us develop new products, services, enhance existing ones, and create reports.</p>
+        <p>We use the most advanced encryption technology, providing higher security than traditional methods and far surpassing international security standards. Signbridge AI ensures that user data cannot be cracked or leaked during transmission and processing through highly complex encryption techniques. Additionally, we strictly follow privacy protection protocols, automatically deleting all uploaded content after processing, offering truly "no-trace" data handling to fully protect your privacy.</p>
 
         <h2>Non-Personal Information</h2>
         <p>We may collect non-personal information about Users whenever they interact with our Site. Non-personal information may include the browser name, the type of computer, IP address, operating system, Internet Service Provider, and other technical information about Users' means of visiting our Site.</p>
@@ -35,7 +35,7 @@ const PrivacyPolicy = () => {
         </ul>
 
         <h2>How We Protect Your Information</h2>
-        <p>We adopt appropriate data collection, storage and processing practices and security measures to protect against unauthorized access, alteration, disclosure or destruction of your personal information, username, password, transaction information and data stored on our Site.</p>
+        <p>We use cutting-edge encryption technology to not only ensure the security of your data transmission but also to fully respect your privacy. Signbridge AI adheres to the principle of "forgetting is protection," meaning that any content uploaded by users is automatically deleted after processing. We do not store or remember any user data. Whether it's your documents, information, or interactions, everything is deleted after completion, ensuring a truly "no-trace" experience that keeps your privacy safe.</p>
         <p>Our Site is in compliance with PCI vulnerability standards in order to create as secure of an environment as possible for Users.</p>
 
         <h2>Sharing Your Personal Information</h2>

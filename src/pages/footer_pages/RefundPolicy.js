@@ -12,10 +12,10 @@ const RefundPolicy = () => {
         <div className="container mt-5 mb-5">
             <div style={pageStyle}>
                 <h1>Refund Policy</h1>
-                <p>This Refund Policy applies to the services provided by NLPhraser. By using our platform and purchasing credits, you agree to the terms outlined below.</p>
+                <p>This Refund Policy applies to the services provided by Signbridge AI. By using our platform and purchasing credits, you agree to the terms outlined below.</p>
 
                 <h2>1. Non-Refundable Credits</h2>
-                <p>In general, credits purchased on NLPhraser are non-refundable once the transaction is completed.
+                <p>In general, credits purchased on Signbridge AI are non-refundable once the transaction is completed.
                     This is because the credits are immediately available for use in our services.
                     If you believe there was an error during the transaction, please contact our support team for review.
                     We recommend users to confirm their needs before making a purchase to avoid unnecessary payment issues.
@@ -25,8 +25,8 @@ const RefundPolicy = () => {
                 </p>
 
                 <h2>2. Exception: Account Closure</h2>
-                <p>If a user requests to close their account, NLPhraser will refund any unused credits at the Basic Package price.
-                    This request must be submitted via email to our customer support team at support@nlphraser.com.
+                <p>If a user requests to close their account, Signbridge AI will refund any unused credits at the Basic Package price.
+                    This request must be submitted via email to our customer support team at support@signbridgeai.com.
                     Please note that extra credits earned through promo codes are non-refundable.
                     Before submitting a request for account closure, we encourage users to verify all unused credits and decide whether to continue using the platform or proceed with a refund.
                     While we strive to ensure a smooth and transparent refund process, processing times may vary depending on the complexity of the request.
@@ -39,7 +39,7 @@ const RefundPolicy = () => {
                     We strongly recommend that users carefully consider their revision needs before submitting content for modification to ensure the results align with their expectations.</p>
 
                 <h2>4. Contact Us</h2>
-                <p>For any questions or refund requests, please email us at support@nlphraser.com. Our support team will review your request and respond within 5 business days.
+                <p>For any questions or refund requests, please email us at support@signbridgeai.com. Our support team will review your request and respond within 5 business days.
                     To ensure faster processing, please provide transaction details, account information, and a description of the issue to help us resolve it as quickly as possible.
                     If your request involves financial matters or complex account issues, processing times may be longer.
                     We are committed to providing efficient and satisfactory service while ensuring the security and fairness of the platform. For refund requests,

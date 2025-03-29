@@ -2,9 +2,11 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './App.css';
+import './modern-styles.css'; // 引入现代化样式
+import './animations.css'; // 引入动画效果
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
-import './i18n'; // 引入 i18n 配置
+// i18n配置已移除，只使用英文
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

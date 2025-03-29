@@ -2,6 +2,16 @@ import React, { useEffect, useRef, useState } from "react";
 import { setKey, useSignLanguageRecognition } from "@sign-speak/react-sdk";
 import "bootstrap/dist/css/bootstrap.min.css";
 
+// 导入WebSocket Hooks
+import useSpeechToText from "../hooks/useSpeechToText";
+import useTextToSpeech from "../hooks/useTextToSpeech";
+import useTextToGloss from "../hooks/useTextToGloss";
+import useGlossToVideo from "../hooks/useGlossToVideo";
+import useTextToASLVideo from "../hooks/useTextToASLVideo";
+
+// 导入WebSocket配置
+import WS_CONFIG from "../config/websocket";
+
 // 从环境变量中获取后端 URL，默认为 http://localhost:8000
 const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
@@ -17,6 +27,17 @@ const Home = () => {
   const [localStream, setLocalStream] = useState(null);
   const [rawPrediction, setRawPrediction] = useState(null);
   const [recognizedText, setRecognizedText] = useState("");
+  const [animateVideo, setAnimateVideo] = useState(false);
+  
+  // 添加动画效果
+  useEffect(() => {
+    // 页面加载后延迟显示动画效果
+    const timer = setTimeout(() => {
+      setAnimateVideo(true);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   // 1) 初始化 Sign-Speak Key
   useEffect(() => {
@@ -83,115 +104,126 @@ const Home = () => {
     stopRecognition();
   };
 
-  // ===================== 右侧：麦克风 -> RESTful API -> 手语视频 =====================
-  const [recordingAudio, setRecordingAudio] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState(null);
-  const [chunks, setChunks] = useState([]);
-  const [videoUrl, setVideoUrl] = useState(null);
-  // 用于显示 /process-audio 返回的识别文本（语音转文本）
-  const [audioTranscription, setAudioTranscription] = useState("");
+  // ===================== 右侧：WebSocket API 实现 =====================
   // 选择的角色，默认取第一个
   const [selectedRole, setSelectedRole] = useState(ROLES[0]);
-  // 可选 TTS 状态
-  const [ttsStatus, setTtsStatus] = useState("");
+  
+  // 用户输入的文本
+  const [inputText, setInputText] = useState("");
+  
+  // 当前选择的功能模式
+  const [activeMode, setActiveMode] = useState("text2video"); // speech2text, text2speech, text2gloss, gloss2video, text2video
+  
+  // 语音转文字WebSocket Hook
+  const speechToText = useSpeechToText({
+    wsUrl: WS_CONFIG.SPEECH_TO_TEXT.url,
+    autoConnect: WS_CONFIG.SPEECH_TO_TEXT.autoConnect
+  });
+  
+  // 文本转语音WebSocket Hook
+  const textToSpeech = useTextToSpeech({
+    wsUrl: WS_CONFIG.TEXT_TO_SPEECH.url,
+    autoConnect: WS_CONFIG.TEXT_TO_SPEECH.autoConnect
+  });
+  
+  // 文本转ASL GlossWebSocket Hook
+  const textToGloss = useTextToGloss({
+    wsUrl: WS_CONFIG.TEXT_TO_GLOSS.url,
+    autoConnect: WS_CONFIG.TEXT_TO_GLOSS.autoConnect
+  });
+  
+  // ASL Gloss转视频WebSocket Hook
+  const glossToVideo = useGlossToVideo({
+    wsUrl: WS_CONFIG.GLOSS_TO_VIDEO.url,
+    autoConnect: WS_CONFIG.GLOSS_TO_VIDEO.autoConnect
+  });
+  
+  // 文本到手语视频一体化WebSocket Hook
+  const textToASLVideo = useTextToASLVideo({
+    wsUrl: WS_CONFIG.TEXT_TO_ASL_VIDEO.url,
+    autoConnect: WS_CONFIG.TEXT_TO_ASL_VIDEO.autoConnect
+  });
 
-  // 开始录制麦克风
-  const handleStartMic = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      setMediaRecorder(recorder);
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          setChunks((prev) => [...prev, e.data]);
-        }
-      };
-
-      recorder.onstop = () => {
-        // 录制结束，整合音频数据
-        const blob = new Blob(chunks, { type: "audio/wav" });
-        setChunks([]);
-
-        // 构造 FormData 并调用 /process-audio 接口
-        const formData = new FormData();
-        formData.append("role", selectedRole);
-        formData.append("audio_file", blob, "recording.wav");
-
-        fetch(`${BASE_URL}/process-audio`, {
-          method: "POST",
-          body: formData,
-        })
-          .then((response) => {
-            const message = response.headers.get("X-Message");
-            // 保存返回的识别文本用于 marquee 显示
-            setAudioTranscription(message || "");
-            const videoPath = response.headers.get("X-Video-Path");
-            console.log("Server Message:", message);
-            console.log("Video Path:", videoPath);
-            return response.blob();
-          })
-          .then((videoBlob) => {
-            if (videoBlob && videoBlob.size > 0) {
-              const url = URL.createObjectURL(videoBlob);
-              setVideoUrl(url);
-            } else {
-              console.log("No video data received from server.");
-              setVideoUrl(null);
-            }
-          })
-          .catch((err) => console.error("ProcessAudio error:", err));
-      };
-
-      recorder.start();
-      setRecordingAudio(true);
-    } catch (error) {
-      console.error("Microphone access error:", error);
+  // =============== WebSocket API 处理函数 ===============
+  
+  // 处理语音转文字
+  const handleSpeechToText = () => {
+    if (speechToText.isRecording) {
+      speechToText.stopRecognition();
+    } else {
+      speechToText.startRecognition();
     }
   };
-
-  // 停止录制麦克风
-  const handleStopMic = () => {
-    if (mediaRecorder) {
-      mediaRecorder.stop();
-      setRecordingAudio(false);
+  
+  // 处理文本转语音
+  const handleTextToSpeech = () => {
+    if (inputText) {
+      textToSpeech.generateSpeech(inputText);
     }
   };
-
-  // 清空右侧的音频生成相关状态
+  
+  // 处理文本转ASL Gloss
+  const handleTextToGloss = () => {
+    if (inputText) {
+      textToGloss.generateGloss(inputText);
+    }
+  };
+  
+  // 处理ASL Gloss转视频
+  const handleGlossToVideo = () => {
+    if (textToGloss.gloss) {
+      // 将Gloss文本拆分为数组
+      const glossArray = textToGloss.gloss.split(' ').filter(item => item.trim());
+      if (glossArray.length > 0) {
+        glossToVideo.generateVideo(glossArray);
+      }
+    }
+  };
+  
+  // 处理文本到手语视频一体化
+  const handleTextToASLVideo = () => {
+    if (inputText) {
+      textToASLVideo.generateVideoFromText(inputText);
+    }
+  };
+  
+  // 清空右侧状态
   const handleClearRight = () => {
-    setVideoUrl(null);
-    setAudioTranscription("");
+    // 根据当前模式清理相应状态
+    switch (activeMode) {
+      case 'speech2text':
+        speechToText.stopRecognition();
+        break;
+      case 'text2speech':
+        textToSpeech.cleanup();
+        break;
+      case 'text2gloss':
+        textToGloss.reset();
+        break;
+      case 'gloss2video':
+        glossToVideo.cleanup();
+        break;
+      case 'text2video':
+        textToASLVideo.cleanup();
+        break;
+      default:
+        break;
+    }
+    
+    // 清空输入文本
+    setInputText('');
   };
-
-  // =============== 可选：调用 GenerateAudio（文本->语音）示例 ===============
-  const handleGenerateAudio = async () => {
-    setTtsStatus("Generating...");
-    const formData = new FormData();
-    formData.append("text", "Hello from React REST API!");
-    formData.append("speaker", "p225"); // TTS 说话人
-
-    fetch(`${BASE_URL}/generate-audio`, {
-      method: "POST",
-      body: formData,
-    })
-      .then((response) => response.blob())
-      .then((audioBlob) => {
-        if (audioBlob && audioBlob.size > 0) {
-          const audioUrl = URL.createObjectURL(audioBlob);
-          setTtsStatus("Audio generated, playing now...");
-          const audio = new Audio(audioUrl);
-          audio.play();
-        } else {
-          setTtsStatus("No audio data received.");
-        }
-      })
-      .catch((err) => setTtsStatus("Error: " + err.message));
+  
+  // 播放生成的语音
+  const handlePlayAudio = () => {
+    if (textToSpeech.audioUrl) {
+      textToSpeech.playAudio();
+    }
   };
 
   return (
     <div className="container my-4">
-      <h1 className="text-center mb-4">ASL Bidirectional Demo (RESTful API)</h1>
+      <h1 className="text-center mb-4">ASL Bidirectional Demo (WebSocket API)</h1>
       <div className="row">
         {/* 左侧：手语识别（保持不变，但不显示 raw prediction） */}
         <div className="col-md-6">
@@ -225,43 +257,61 @@ const Home = () => {
           </div>
         </div>
 
-        {/* 右侧：麦克风 -> RESTful API -> 手语视频 */}
+        {/* 右侧：WebSocket API 实现 */}
         <div className="col-md-6">
-          {/* 视频与识别文本展示区域 */}
+          {/* 功能选择区域 */}
           <div className="card mb-3">
-            <div className="card-header">Generated Sign Video (Right)</div>
+            <div className="card-header">WebSocket API 功能</div>
             <div className="card-body">
-              <video
-                src={videoUrl}
-                className="img-fluid mb-2"
-                controls
-                autoPlay
-                loop
-                style={{ backgroundColor: "#000" }}
-              />
-              <div style={{ overflow: "hidden", whiteSpace: "nowrap" }}>
-                <marquee scrollamount="5">
-                  {audioTranscription || "Transcribed text will appear here..."}
-                </marquee>
+              <div className="btn-group w-100 mb-3">
+                <button 
+                  className={`btn ${activeMode === 'speech2text' ? 'btn-primary' : 'btn-outline-primary'}`}
+                  onClick={() => setActiveMode('speech2text')}
+                >
+                  语音转文字
+                </button>
+                <button 
+                  className={`btn ${activeMode === 'text2speech' ? 'btn-primary' : 'btn-outline-primary'}`}
+                  onClick={() => setActiveMode('text2speech')}
+                >
+                  文本转语音
+                </button>
+                <button 
+                  className={`btn ${activeMode === 'text2gloss' ? 'btn-primary' : 'btn-outline-primary'}`}
+                  onClick={() => setActiveMode('text2gloss')}
+                >
+                  文本转Gloss
+                </button>
+                <button 
+                  className={`btn ${activeMode === 'gloss2video' ? 'btn-primary' : 'btn-outline-primary'}`}
+                  onClick={() => setActiveMode('gloss2video')}
+                >
+                  Gloss转视频
+                </button>
+                <button 
+                  className={`btn ${activeMode === 'text2video' ? 'btn-primary' : 'btn-outline-primary'}`}
+                  onClick={() => setActiveMode('text2video')}
+                >
+                  一体化
+                </button>
               </div>
-            </div>
-          </div>
-          {/* 录音与角色选择区域 */}
-          <div className="card mb-3">
-            <div className="card-body">
-              <div className="row">
-                <div className="col-md-6 d-flex align-items-center">
-                  {!recordingAudio ? (
-                    <button className="btn btn-primary w-100" onClick={handleStartMic}>
-                      Start Recording
-                    </button>
-                  ) : (
-                    <button className="btn btn-danger w-100" onClick={handleStopMic}>
-                      Stop &amp; Upload
-                    </button>
-                  )}
+              
+              {/* 文本输入区域 - 除了语音转文字外的模式都需要 */}
+              {activeMode !== 'speech2text' && (
+                <div className="mb-3">
+                  <textarea 
+                    className="form-control" 
+                    rows="3" 
+                    placeholder="请输入文本..."
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                  ></textarea>
                 </div>
-                <div className="col-md-6">
+              )}
+              
+              {/* 角色选择 - 仅在一体化模式下显示 */}
+              {activeMode === 'text2video' && (
+                <div className="mb-3">
                   <select
                     className="form-select"
                     value={selectedRole}
@@ -274,29 +324,179 @@ const Home = () => {
                     ))}
                   </select>
                 </div>
+              )}
+              
+              {/* 操作按钮 */}
+              <div className="d-flex justify-content-between">
+                {/* 语音转文字模式 */}
+                {activeMode === 'speech2text' && (
+                  <button 
+                    className={`btn ${speechToText.isRecording ? 'btn-danger' : 'btn-success'} w-100`}
+                    onClick={handleSpeechToText}
+                  >
+                    {speechToText.isRecording ? '停止录音' : '开始录音'}
+                  </button>
+                )}
+                
+                {/* 文本转语音模式 */}
+                {activeMode === 'text2speech' && (
+                  <>
+                    <button 
+                      className="btn btn-primary flex-grow-1 me-2"
+                      onClick={handleTextToSpeech}
+                      disabled={!inputText || textToSpeech.isLoading}
+                    >
+                      {textToSpeech.isLoading ? '生成中...' : '生成语音'}
+                    </button>
+                    <button 
+                      className="btn btn-success"
+                      onClick={handlePlayAudio}
+                      disabled={!textToSpeech.audioUrl}
+                    >
+                      播放
+                    </button>
+                  </>
+                )}
+                
+                {/* 文本转Gloss模式 */}
+                {activeMode === 'text2gloss' && (
+                  <button 
+                    className="btn btn-primary w-100"
+                    onClick={handleTextToGloss}
+                    disabled={!inputText || textToGloss.isLoading}
+                  >
+                    {textToGloss.isLoading ? '转换中...' : '转换为Gloss'}
+                  </button>
+                )}
+                
+                {/* Gloss转视频模式 */}
+                {activeMode === 'gloss2video' && (
+                  <button 
+                    className="btn btn-primary w-100"
+                    onClick={handleGlossToVideo}
+                    disabled={!textToGloss.gloss || glossToVideo.isProcessing}
+                  >
+                    {glossToVideo.isProcessing ? '生成中...' : '生成视频'}
+                  </button>
+                )}
+                
+                {/* 一体化模式 */}
+                {activeMode === 'text2video' && (
+                  <button 
+                    className="btn btn-primary w-100"
+                    onClick={handleTextToASLVideo}
+                    disabled={!inputText || textToASLVideo.isProcessing}
+                  >
+                    {textToASLVideo.isProcessing ? '生成中...' : '一键生成手语视频'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
-          {/* 清空按钮 */}
+          
+          {/* 结果展示区域 */}
           <div className="card mb-3">
-            <div className="card-body">
-              <button className="btn btn-secondary w-100" onClick={handleClearRight}>
-                Clear
-              </button>
+            <div className="card-header">
+              {activeMode === 'speech2text' && '语音识别结果'}
+              {activeMode === 'text2speech' && '语音合成状态'}
+              {activeMode === 'text2gloss' && 'ASL Gloss结果'}
+              {activeMode === 'gloss2video' && '手语视频'}
+              {activeMode === 'text2video' && '手语视频'}
             </div>
-          </div>
-          {/* 可选：调用 GenerateAudio 示例 */}
-          <div className="card mt-3">
-            <div className="card-header">Generate Audio (TTS) Example</div>
             <div className="card-body">
-              <button className="btn btn-secondary" onClick={handleGenerateAudio}>
-                Generate Audio
-              </button>
-              <p className="mt-2">{ttsStatus}</p>
+              {/* 语音转文字结果 */}
+              {activeMode === 'speech2text' && (
+                <div>
+                  <p>{speechToText.recognizedText || '等待识别结果...'}</p>
+                  {speechToText.error && (
+                    <div className="alert alert-danger">{speechToText.error}</div>
+                  )}
+                </div>
+              )}
+              
+              {/* 文本转语音结果 */}
+              {activeMode === 'text2speech' && (
+                <div>
+                  {textToSpeech.isSuccess && (
+                    <div className="alert alert-success">语音生成成功，可点击播放按钮收听</div>
+                  )}
+                  {textToSpeech.error && (
+                    <div className="alert alert-danger">{textToSpeech.error}</div>
+                  )}
+                </div>
+              )}
+              
+              {/* 文本转Gloss结果 */}
+              {activeMode === 'text2gloss' && (
+                <div>
+                  <p className="font-monospace">{textToGloss.gloss || '等待转换结果...'}</p>
+                  {textToGloss.error && (
+                    <div className="alert alert-danger">{textToGloss.error}</div>
+                  )}
+                </div>
+              )}
+              
+              {/* Gloss转视频结果 */}
+              {activeMode === 'gloss2video' && (
+                <div>
+                  {glossToVideo.videoUrl ? (
+                    <video
+                      src={glossToVideo.videoUrl}
+                      className="img-fluid mb-2"
+                      controls
+                      autoPlay
+                      loop
+                      style={{ backgroundColor: "#000" }}
+                    />
+                  ) : (
+                    <p>等待视频生成...</p>
+                  )}
+                  {glossToVideo.error && (
+                    <div className="alert alert-danger">{glossToVideo.error}</div>
+                  )}
+                </div>
+              )}
+              
+              {/* 一体化结果 */}
+              {activeMode === 'text2video' && (
+                <div>
+                  {textToASLVideo.videoUrl ? (
+                    <>
+                      <video
+                        src={textToASLVideo.videoUrl}
+                        className="img-fluid mb-2"
+                        controls
+                        autoPlay
+                        loop
+                        style={{ backgroundColor: "#000" }}
+                      />
+                      {textToASLVideo.gloss && (
+                        <div className="alert alert-info mt-2">
+                          <strong>生成的Gloss:</strong> {textToASLVideo.gloss}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p>等待视频生成...</p>
+                  )}
+                  {textToASLVideo.error && (
+                    <div className="alert alert-danger">{textToASLVideo.error}</div>
+                  )}
+                </div>
+              )}
+              </div>
+            </div>
+            
+            {/* 清除按钮 */}
+            <div className="card mb-3">
+              <div className="card-body">
+                <button className="btn btn-secondary w-100" onClick={handleClearRight}>
+                  清除
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
     </div>
   );
 };
