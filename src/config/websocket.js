@@ -4,7 +4,13 @@
  */
 
 // 从环境变量获取WebSocket服务器基础URL，如果没有则使用默认值
-const WS_BASE_URL = process.env.SIGNBRIDGE_BACKEND_URL || 'wss://your-ngrok-subdomain.ngrok.io';
+// 注意：在React中，前端可访问的环境变量必须以REACT_APP_前缀开头
+let WS_BASE_URL = process.env.REACT_APP_SIGNBRIDGE_BACKEND_URL || 'wss://your-ngrok-subdomain.ngrok.io';
+
+// 调试信息：输出所有环境变量，帮助排查问题
+console.log('所有环境变量:', process.env);
+
+console.log('WebSocket基础URL(原始):', WS_BASE_URL);
 
 // 确保URL以wss://或ws://开头
 if (WS_BASE_URL && !WS_BASE_URL.startsWith('wss://') && !WS_BASE_URL.startsWith('ws://')) {
@@ -20,6 +26,8 @@ if (WS_BASE_URL && !WS_BASE_URL.startsWith('wss://') && !WS_BASE_URL.startsWith(
     WS_BASE_URL = `wss://${WS_BASE_URL}`;
   }
 }
+
+console.log('WebSocket基础URL(转换后):', WS_BASE_URL);
 
 // WebSocket接口配置
 const WS_CONFIG = {

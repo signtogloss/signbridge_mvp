@@ -6,6 +6,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import useWebSocket from './useWebSocket';
 
+// 调试日志函数
+const DEBUG = true;
+const log = (...args) => {
+  if (DEBUG) {
+    console.log('[SpeechToText]', ...args);
+  }
+};
+
 /**
  * 实时语音识别Hook
  * @param {Object} options - 配置选项
@@ -35,6 +43,7 @@ const useSpeechToText = (options = {}) => {
   const handleMessage = useCallback((message) => {
     try {
       // 服务器返回的是纯文本
+      log('收到识别结果:', message);
       setRecognizedText(message);
     } catch (err) {
       console.error('处理识别结果失败:', err);
@@ -52,19 +61,35 @@ const useSpeechToText = (options = {}) => {
   } = useWebSocket(wsUrl, {
     autoConnect,
     onMessage: handleMessage,
-    onError: (_, errorMsg) => setError(errorMsg)
+    onOpen: () => {
+      log('WebSocket连接已建立, URL:', wsUrl);
+      setError(null);
+    },
+    onClose: (event) => {
+      log('WebSocket连接已关闭, 代码:', event.code, '原因:', event.reason);
+    },
+    onError: (_, errorMsg) => {
+      log('WebSocket错误:', errorMsg);
+      setError(errorMsg);
+    }
   });
 
   // 开始录音并发送到WebSocket
   const startRecognition = useCallback(async () => {
+    log('开始语音识别, 当前连接状态:', isConnected ? '已连接' : '未连接');
+    log('WebSocket URL:', wsUrl);
+    
     if (!isConnected) {
+      log('尝试建立WebSocket连接...');
       connect();
       // 等待连接建立
       await new Promise(resolve => {
         const checkConnection = () => {
           if (isConnected) {
+            log('WebSocket连接已建立');
             resolve();
           } else {
+            log('等待WebSocket连接...');
             setTimeout(checkConnection, 100);
           }
         };
@@ -113,16 +138,19 @@ const useSpeechToText = (options = {}) => {
 
   // 停止录音
   const stopRecognition = useCallback(() => {
+    log('停止语音识别');
     setIsRecording(false);
     
     // 停止音频流
     if (streamRef.current) {
+      log('停止音频流');
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
     
     // 关闭音频上下文
     if (audioContextRef.current) {
+      log('关闭音频上下文');
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
@@ -136,12 +164,24 @@ const useSpeechToText = (options = {}) => {
     };
   }, [stopRecognition, disconnect]);
 
+  // 添加调试信息
+  useEffect(() => {
+    log('状态变化:', { 
+      isConnected, 
+      status, 
+      isRecording, 
+      error: error || wsError,
+      wsUrl
+    });
+  }, [isConnected, status, isRecording, error, wsError, wsUrl]);
+
   return {
     recognizedText,
     isRecording,
     isConnected,
     status,
     error: error || wsError,
+    wsUrl,  // 添加WebSocket URL以便调试
     startRecognition,
     stopRecognition
   };
