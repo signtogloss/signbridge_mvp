@@ -52,11 +52,6 @@ body, html {
 
 .main-content {
   flex: 1;
-  padding-bottom: 60px; /* 确保内容不会被固定在底部的 Footer 遮挡 */
-}
-
-footer {
-  z-index: 1000; /* 确保 footer 的 z-index 低于 dropdown */
 }
 
 

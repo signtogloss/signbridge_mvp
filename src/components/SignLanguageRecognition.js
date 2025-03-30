@@ -14,13 +14,13 @@ const SignLanguageRecognition = ({ signSpeakKey, onTextRecognized }) => {
   const [localStream, setLocalStream] = useState(null);
   const [rawPrediction, setRawPrediction] = useState(null);
   const [recognizedText, setRecognizedText] = useState("");
-  const [animateVideo, setAnimateVideo] = useState(false);
+  // 移除动画相关状态
   
   // 添加动画效果
   useEffect(() => {
     // 页面加载后延迟显示动画效果
     const timer = setTimeout(() => {
-      setAnimateVideo(true);
+      // 移除动画相关代码
     }, 300);
     
     return () => clearTimeout(timer);
