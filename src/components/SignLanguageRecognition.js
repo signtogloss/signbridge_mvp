@@ -106,20 +106,27 @@ const SignLanguageRecognition = ({ signSpeakKey, onTextRecognized }) => {
         <div className="card-body">
           <video
             ref={videoRef}
-            className="img-fluid mb-3"
-            style={{ backgroundColor: "#000" }}
+            className="img-fluid"
+            style={{ 
+              backgroundColor: "#000",
+              width: "100%",
+              height: "auto",
+              marginBottom: "15px"
+            }}
           />
-          {loading ? (
-            <p>Loading camera/websocket...</p>
-          ) : recording ? (
-            <button className="btn btn-danger" onClick={handleStop}>
-              Stop Recognition
-            </button>
-          ) : (
-            <button className="btn btn-success" onClick={handleStart}>
-              Start Recognition
-            </button>
-          )}
+          <div style={{ textAlign: "center" }}>
+            {loading ? (
+              <p>Loading camera/websocket...</p>
+            ) : recording ? (
+              <button className="btn btn-danger" onClick={handleStop}>
+                Stop Recognition
+              </button>
+            ) : (
+              <button className="btn btn-success" onClick={handleStart}>
+                Start Recognition
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
