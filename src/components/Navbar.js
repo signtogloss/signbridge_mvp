@@ -18,7 +18,7 @@ const Navbar = () => {
               <Link className="nav-link active hover-lift" aria-current="page" to="/">ASL bidirectional translation</Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link hover-lift" to="/speech-to-text">Other</Link>
+              <Link className="nav-link hover-lift" to="/Other">Other</Link>
             </li>
           </ul> {/* 关闭 <ul> */}
 

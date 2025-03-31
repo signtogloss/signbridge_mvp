@@ -14,7 +14,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
  * Note: This version omits the UI for changing the WebSocket URL. 
  *       Instead, you can pass a URL via props or just edit the default below.
  */
-const SpeechToText = ({ websocketUrl = "ws://localhost:8000/asr" }) => {
+const SpeechToText = ({ websocketUrl = "ws://baf1-183-223-25-19.ngrok-free.app/asr" }) => {
   // State variables
   const [isRecording, setIsRecording] = useState(false);
   const [chunkDuration, setChunkDuration] = useState(1000); // in ms
