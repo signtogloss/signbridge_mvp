@@ -3,8 +3,9 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 /**
  * SpeechToVideo
  * -------------
- * 接收后端返回的 Base64 编码的 JSON 数据，
- * 将 videoBase64 转成 Blob，再生成可播放的 URL。
+ * 接收后端返回的 JSON 状态消息和二进制视频数据，
+ * 将 videoBase64 转成 Blob 或直接处理二进制数据生成可播放的 URL，
+ * 同时展示状态日志信息。
  *
  * Props:
  *  - websocketUrl: string (WebSocket 服务器 URL)
@@ -18,6 +19,7 @@ const SpeechToVideo = ({
   const [statusMessage, setStatusMessage] = useState("Click to start video generation");
   const [videoSrc, setVideoSrc] = useState("");
   const [timerDisplay, setTimerDisplay] = useState("00:00");
+  const [logs, setLogs] = useState([]); // 用于存储 JSON 状态日志
 
   // Refs
   const websocketRef = useRef(null);
@@ -61,8 +63,7 @@ const SpeechToVideo = ({
     return new Promise((resolve, reject) => {
       try {
         const ws = new WebSocket(websocketUrl);
-        // 为确保后端返回的文本消息不被错误转换，建议删除或修改 binaryType 设置
-        // 如果确实需要接收二进制数据，再统一转换成文本
+        // 设置 binaryType 为 arraybuffer
         ws.binaryType = "arraybuffer";
 
         ws.onopen = () => {
@@ -85,19 +86,21 @@ const SpeechToVideo = ({
         };
 
         ws.onmessage = (event) => {
-          // 如果收到的数据是字符串
+          // 判断 event.data 的类型
           if (typeof event.data === "string") {
             const trimmed = event.data.trim();
             // 如果字符串以 { 开头，则认为是 JSON 状态消息
             if (trimmed.startsWith("{")) {
               try {
                 const data = JSON.parse(trimmed);
+                // 将 JSON 状态消息追加到日志中
+                setLogs((prev) => [...prev, data]);
                 if (data.videoBase64) {
-                  // 后端有可能将视频以 Base64 格式返回
+                  // 如果包含视频 Base64 数据
                   const blob = base64ToBlob(data.videoBase64, data.mimeType || "video/mp4");
                   const blobUrl = URL.createObjectURL(blob);
                   setVideoSrc(blobUrl);
-                  setStatusMessage(`Received base64 video, lag ${data.remaining_time_video || 0}s`);
+                  setStatusMessage(`Received video, lag ${data.remaining_time_video || 0}s`);
                 } else {
                   setStatusMessage(data.status || "");
                 }
@@ -105,9 +108,8 @@ const SpeechToVideo = ({
                 console.error("Error parsing JSON:", err);
               }
             } else {
-              // 如果字符串不是 JSON，则可能是视频的二进制数据被错误地传为字符串
+              // 如果字符串不是 JSON，则可能是视频的二进制数据以字符串形式传来
               console.warn("Received non-JSON string; treating as binary data");
-              // 将字符串转换为 Uint8Array
               const len = trimmed.length;
               const bytes = new Uint8Array(len);
               for (let i = 0; i < len; i++) {
@@ -118,16 +120,13 @@ const SpeechToVideo = ({
               setVideoSrc(blobUrl);
               setStatusMessage("Received binary video data (as string)");
             }
-          }
-          // 如果收到的是 ArrayBuffer
-          else if (event.data instanceof ArrayBuffer) {
+          } else if (event.data instanceof ArrayBuffer) {
+            // 如果收到 ArrayBuffer，则直接生成 Blob
             const blob = new Blob([event.data], { type: "video/mp4" });
             const blobUrl = URL.createObjectURL(blob);
             setVideoSrc(blobUrl);
             setStatusMessage("Received binary video data");
-          }
-          // 如果收到的是 Blob 对象（备用方案）
-          else if (event.data instanceof Blob) {
+          } else if (event.data instanceof Blob) {
             const blobUrl = URL.createObjectURL(event.data);
             setVideoSrc(blobUrl);
             setStatusMessage("Received binary video data (Blob)");
@@ -135,8 +134,6 @@ const SpeechToVideo = ({
             console.error("Unsupported message type", event.data);
           }
         };
-        
-        
 
         websocketRef.current = ws;
       } catch (error) {
@@ -300,7 +297,6 @@ const SpeechToVideo = ({
       }}
     >
       <h5>Speech to Video</h5>
-
       {/* 控制区 */}
       <div
         className="settings-container"
@@ -432,7 +428,7 @@ const SpeechToVideo = ({
         {statusMessage}
       </p>
 
-      {/* 视频展示区域 */}
+      {/* 视频展示区域，不循环播放 */}
       <div
         id="videoContainer"
         style={{
@@ -455,12 +451,40 @@ const SpeechToVideo = ({
             controls
             style={{ maxWidth: "100%", maxHeight: "100%" }}
             autoPlay
-            loop
           />
         ) : (
           <span style={{ fontSize: "15px", color: "#888" }}>
             Generated video will appear here.
           </span>
+        )}
+      </div>
+
+      {/* JSON 状态日志区域 */}
+      <div
+        id="jsonLogs"
+        style={{
+          margin: "10px auto",
+          maxWidth: "100%",
+          backgroundColor: "#f9f9f9",
+          border: "1px solid #ddd",
+          borderRadius: "6px",
+          padding: "8px",
+        }}
+      >
+        <h6 style={{ marginBottom: "8px", fontSize: "14px", color: "#333" }}>状态日志</h6>
+        {logs.length > 0 ? (
+          <ul style={{ listStyle: "none", paddingLeft: 0, margin: 0 }}>
+            {logs.map((log, index) => (
+              <li key={index} style={{ marginBottom: "6px", fontSize: "13px", color: "#555" }}>
+                <strong>{log.status}</strong>{" "}
+                {log.video_id && `(ID: ${log.video_id})`}{" "}
+                {log.video_size && `(Size: ${log.video_size})`}{" "}
+                {log.gloss && ` - Gloss: ${log.gloss}`}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p style={{ fontSize: "13px", color: "#999" }}>暂无状态日志</p>
         )}
       </div>
     </div>
