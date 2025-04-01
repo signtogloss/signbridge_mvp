@@ -1,5 +1,6 @@
 import React from "react";
 import SpeechToText from "./SpeechToText";
+import SpeechToVideo from "./SpeechToVideo";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 /**
@@ -13,10 +14,11 @@ const SignLanguageGeneration = () => {
   return (
     <div>
       <div className="card mb-3">
-        <div className="card-header">Speech to Text</div>
+        <div className="card-header">Sign Language Generation</div>
         <div className="card-body">
           {/* Speech-to-text component */}
-          <SpeechToText />
+          {/* <SpeechToText /> */}
+          <SpeechToVideo />
         </div>
       </div>
     </div>

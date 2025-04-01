@@ -1,15 +1,25 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 
-const LiveTranscription = () => {
-  // State variables
+/**
+ * SpeechToVideo
+ * -------------
+ * 接收后端返回的 Base64 编码的 JSON 数据，
+ * 将 videoBase64 转成 Blob，再生成可播放的 URL。
+ *
+ * Props:
+ *  - websocketUrl: string (WebSocket 服务器 URL)
+ */
+const SpeechToVideo = ({
+  websocketUrl = "wss://8494-183-223-25-19.ngrok-free.app/ws/speech2video",
+}) => {
+  // 状态变量
   const [isRecording, setIsRecording] = useState(false);
-  const [chunkDuration, setChunkDuration] = useState(1000);
-  const [websocketUrl, setWebsocketUrl] = useState("ws://localhost:8000/asr");
-  const [status, setStatus] = useState("");
-  const [transcriptHTML, setTranscriptHTML] = useState("");
+  const [chunkDuration, setChunkDuration] = useState(1000); // 分片时长（ms）
+  const [statusMessage, setStatusMessage] = useState("Click to start video generation");
+  const [videoSrc, setVideoSrc] = useState("");
   const [timerDisplay, setTimerDisplay] = useState("00:00");
 
-  // Refs for WebSocket, MediaRecorder, AudioContext, etc.
+  // Refs
   const websocketRef = useRef(null);
   const recorderRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -21,102 +31,158 @@ const LiveTranscription = () => {
   const animationFrameRef = useRef(null);
   const userClosingRef = useRef(false);
 
-  // Setup WebSocket connection
+  /**
+   * 将 Base64 字符串转换为 Blob 对象
+   * @param {string} base64Data 
+   * @param {string} mimeType 
+   * @returns {Blob}
+   */
+  const base64ToBlob = (base64Data, mimeType = "video/mp4") => {
+    const byteChars = atob(base64Data);
+    const sliceSize = 1024;
+    const byteArrays = [];
+
+    for (let offset = 0; offset < byteChars.length; offset += sliceSize) {
+      const slice = byteChars.slice(offset, offset + sliceSize);
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+    return new Blob(byteArrays, { type: mimeType });
+  };
+
+  /****************************************************************
+   * 1. WebSocket 连接与消息处理
+   ****************************************************************/
   const setupWebSocket = useCallback(() => {
     return new Promise((resolve, reject) => {
       try {
         const ws = new WebSocket(websocketUrl);
+        // 为确保后端返回的文本消息不被错误转换，建议删除或修改 binaryType 设置
+        // 如果确实需要接收二进制数据，再统一转换成文本
         ws.binaryType = "arraybuffer";
+
         ws.onopen = () => {
-          setStatus("Connected to server.");
+          setStatusMessage("Connected to video generation server.");
           resolve(ws);
         };
+
         ws.onclose = () => {
           if (userClosingRef.current) {
-            setStatus("WebSocket closed by user.");
+            setStatusMessage("WebSocket closed by user.");
           } else {
-            setStatus(
-              "Disconnected from the WebSocket server. (Check logs if model is loading.)"
-            );
+            setStatusMessage("Disconnected from the server.");
           }
           userClosingRef.current = false;
         };
+
         ws.onerror = () => {
-          setStatus("Error connecting to WebSocket.");
+          setStatusMessage("Error connecting to WebSocket.");
           reject(new Error("Error connecting to WebSocket"));
         };
+
         ws.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          const {
-            lines = [],
-            buffer_transcription = "",
-            buffer_diarization = "",
-            remaining_time_transcription = 0,
-            remaining_time_diarization = 0,
-          } = data;
-          renderLinesWithBuffer(
-            lines,
-            buffer_diarization,
-            buffer_transcription,
-            remaining_time_diarization,
-            remaining_time_transcription
-          );
+          // 如果收到的数据是字符串
+          if (typeof event.data === "string") {
+            const trimmed = event.data.trim();
+            // 如果字符串以 { 开头，则认为是 JSON 状态消息
+            if (trimmed.startsWith("{")) {
+              try {
+                const data = JSON.parse(trimmed);
+                if (data.videoBase64) {
+                  // 后端有可能将视频以 Base64 格式返回
+                  const blob = base64ToBlob(data.videoBase64, data.mimeType || "video/mp4");
+                  const blobUrl = URL.createObjectURL(blob);
+                  setVideoSrc(blobUrl);
+                  setStatusMessage(`Received base64 video, lag ${data.remaining_time_video || 0}s`);
+                } else {
+                  setStatusMessage(data.status || "");
+                }
+              } catch (err) {
+                console.error("Error parsing JSON:", err);
+              }
+            } else {
+              // 如果字符串不是 JSON，则可能是视频的二进制数据被错误地传为字符串
+              console.warn("Received non-JSON string; treating as binary data");
+              // 将字符串转换为 Uint8Array
+              const len = trimmed.length;
+              const bytes = new Uint8Array(len);
+              for (let i = 0; i < len; i++) {
+                bytes[i] = trimmed.charCodeAt(i);
+              }
+              const blob = new Blob([bytes], { type: "video/mp4" });
+              const blobUrl = URL.createObjectURL(blob);
+              setVideoSrc(blobUrl);
+              setStatusMessage("Received binary video data (as string)");
+            }
+          }
+          // 如果收到的是 ArrayBuffer
+          else if (event.data instanceof ArrayBuffer) {
+            const blob = new Blob([event.data], { type: "video/mp4" });
+            const blobUrl = URL.createObjectURL(blob);
+            setVideoSrc(blobUrl);
+            setStatusMessage("Received binary video data");
+          }
+          // 如果收到的是 Blob 对象（备用方案）
+          else if (event.data instanceof Blob) {
+            const blobUrl = URL.createObjectURL(event.data);
+            setVideoSrc(blobUrl);
+            setStatusMessage("Received binary video data (Blob)");
+          } else {
+            console.error("Unsupported message type", event.data);
+          }
         };
+        
+        
+
         websocketRef.current = ws;
       } catch (error) {
-        setStatus("Invalid WebSocket URL. Please check and try again.");
+        setStatusMessage("Invalid WebSocket URL. Please check your config.");
         reject(error);
       }
     });
   }, [websocketUrl]);
 
-  // Render transcript lines with lag indicators (same as HTML)
-  const renderLinesWithBuffer = useCallback(
-    (
-      lines,
-      buffer_diarization,
-      buffer_transcription,
-      remaining_time_diarization,
-      remaining_time_transcription
-    ) => {
-      const linesHtml = lines
-        .map((item, idx) => {
-          let timeInfo = "";
-          if (item.beg !== undefined && item.end !== undefined) {
-            timeInfo = ` ${item.beg} - ${item.end}`;
-          }
-          let speakerLabel = "";
-          if (item.speaker === -2) {
-            speakerLabel = `<span class="silence">Silence<span id="timeInfo">${timeInfo}</span></span>`;
-          } else if (item.speaker === 0) {
-            speakerLabel = `<span class="loading"><span class="spinner"></span><span id="timeInfo">${remaining_time_diarization} second(s) of audio are undergoing diarization</span></span>`;
-          } else if (item.speaker === -1) {
-            speakerLabel = `<span id="speaker"><span id="timeInfo">${timeInfo}</span></span>`;
-          } else if (item.speaker !== -1) {
-            speakerLabel = `<span id="speaker">Speaker ${item.speaker}<span id="timeInfo">${timeInfo}</span></span>`;
-          }
-          let textContent = item.text;
-          if (idx === lines.length - 1) {
-            speakerLabel += `<span class="label_transcription"><span class="spinner"></span>Transcription lag <span id="timeInfo">${remaining_time_transcription}s</span></span>`;
-          }
-          if (idx === lines.length - 1 && buffer_diarization) {
-            speakerLabel += `<span class="label_diarization"><span class="spinner"></span>Diarization lag<span id="timeInfo">${remaining_time_diarization}s</span></span>`;
-            textContent += `<span class="buffer_diarization">${buffer_diarization}</span>`;
-          }
-          if (idx === lines.length - 1) {
-            textContent += `<span class="buffer_transcription">${buffer_transcription}</span>`;
-          }
-          return textContent
-            ? `<p>${speakerLabel}<br/><div class="textcontent">${textContent}</div></p>`
-            : `<p>${speakerLabel}<br/></p>`;
-        })
-        .join("");
-      setTranscriptHTML(linesHtml);
-    },
-    []
-  );
+  /****************************************************************
+   * 2. 录音与波形绘制（保持不变）
+   ****************************************************************/
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      audioContextRef.current = audioContext;
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyserRef.current = analyser;
+      const mic = audioContext.createMediaStreamSource(stream);
+      microphoneRef.current = mic;
+      mic.connect(analyser);
 
-  // Update timer display every second
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      recorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (websocketRef.current && websocketRef.current.readyState === WebSocket.OPEN) {
+          websocketRef.current.send(e.data);
+        }
+      };
+      mediaRecorder.start(chunkDuration);
+
+      startTimeRef.current = Date.now();
+      timerIntervalRef.current = setInterval(updateTimer, 1000);
+      drawWaveform();
+
+      setIsRecording(true);
+      setStatusMessage("Recording and generating video...");
+    } catch (err) {
+      setStatusMessage("Error accessing microphone. Please allow mic usage.");
+      console.error(err);
+    }
+  };
+
   const updateTimer = useCallback(() => {
     if (!startTimeRef.current) return;
     const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
@@ -125,24 +191,26 @@ const LiveTranscription = () => {
     setTimerDisplay(`${minutes}:${seconds}`);
   }, []);
 
-  // Draw waveform on canvas using AnalyserNode
   const drawWaveform = useCallback(() => {
     const canvas = waveCanvasRef.current;
     if (!canvas || !analyserRef.current) return;
     const ctx = canvas.getContext("2d");
     const dpr = window.devicePixelRatio || 1;
+
     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
     ctx.lineWidth = 1;
     ctx.strokeStyle = "rgb(0, 0, 0)";
     ctx.beginPath();
+
     const bufferLength = analyserRef.current.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
     analyserRef.current.getByteTimeDomainData(dataArray);
+
     const sliceWidth = (canvas.width / dpr) / bufferLength;
     let x = 0;
     for (let i = 0; i < bufferLength; i++) {
       const v = dataArray[i] / 128.0;
-      const y = v * (canvas.height / dpr) / 2;
+      const y = (v * (canvas.height / dpr)) / 2;
       if (i === 0) {
         ctx.moveTo(x, y);
       } else {
@@ -150,45 +218,12 @@ const LiveTranscription = () => {
       }
       x += sliceWidth;
     }
-    ctx.lineTo(canvas.width / dpr, canvas.height / dpr / 2);
+    ctx.lineTo(canvas.width / dpr, (canvas.height / dpr) / 2);
     ctx.stroke();
+
     animationFrameRef.current = requestAnimationFrame(drawWaveform);
   }, []);
 
-  // Start recording: get microphone, set up MediaRecorder, AudioContext, etc.
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Set up AudioContext and AnalyserNode for waveform
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      audioContextRef.current = audioContext;
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      analyserRef.current = analyser;
-      const microphone = audioContext.createMediaStreamSource(stream);
-      microphoneRef.current = microphone;
-      microphone.connect(analyser);
-      // Set up MediaRecorder for audio
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-      recorderRef.current = mediaRecorder;
-      mediaRecorder.ondataavailable = (e) => {
-        if (websocketRef.current && websocketRef.current.readyState === WebSocket.OPEN) {
-          websocketRef.current.send(e.data);
-        }
-      };
-      mediaRecorder.start(chunkDuration);
-      startTimeRef.current = Date.now();
-      timerIntervalRef.current = setInterval(updateTimer, 1000);
-      drawWaveform();
-      setIsRecording(true);
-      setStatus("Recording...");
-    } catch (err) {
-      setStatus("Error accessing microphone. Please allow microphone access.");
-      console.error(err);
-    }
-  };
-
-  // Stop recording: clean up recorder, audio, timers, and close WebSocket
   const stopRecording = () => {
     userClosingRef.current = true;
     if (recorderRef.current && recorderRef.current.state !== "inactive") {
@@ -221,22 +256,22 @@ const LiveTranscription = () => {
     setTimerDisplay("00:00");
     startTimeRef.current = null;
     setIsRecording(false);
+
     if (websocketRef.current) {
       websocketRef.current.close();
       websocketRef.current = null;
     }
-    setStatus("Click to start transcription");
+    setStatusMessage("Click to start video generation");
   };
 
-  // Toggle recording on button click
   const toggleRecording = async () => {
     if (!isRecording) {
-      setTranscriptHTML("");
+      setVideoSrc("");
       try {
         await setupWebSocket();
         await startRecording();
       } catch (err) {
-        setStatus("Could not connect to WebSocket or access mic. Aborted.");
+        setStatusMessage("Could not connect or access mic. Aborted.");
         console.error(err);
       }
     } else {
@@ -244,22 +279,10 @@ const LiveTranscription = () => {
     }
   };
 
-  // Handlers for settings controls
   const handleChunkSelectorChange = (e) => {
-    setChunkDuration(parseInt(e.target.value));
+    setChunkDuration(parseInt(e.target.value, 10));
   };
 
-  const handleWebsocketInputChange = (e) => {
-    const urlValue = e.target.value.trim();
-    if (!urlValue.startsWith("ws://") && !urlValue.startsWith("wss://")) {
-      setStatus("Invalid WebSocket URL (must start with ws:// or wss://)");
-      return;
-    }
-    setWebsocketUrl(urlValue);
-    setStatus("WebSocket URL updated. Ready to connect.");
-  };
-
-  // Clean up on unmount
   useEffect(() => {
     return () => {
       stopRecording();
@@ -268,17 +291,20 @@ const LiveTranscription = () => {
   }, []);
 
   return (
-    <div>
-      {/* Settings and controls */}
+    <div
+      style={{
+        padding: "1rem",
+        border: "1px solid #ddd",
+        borderRadius: "8px",
+        backgroundColor: "#fafafa",
+      }}
+    >
+      <h5>Speech to Video</h5>
+
+      {/* 控制区 */}
       <div
         className="settings-container"
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: "15px",
-          marginTop: "20px",
-        }}
+        style={{ display: "flex", alignItems: "center", gap: "15px", marginTop: "10px" }}
       >
         <button
           id="recordButton"
@@ -365,30 +391,22 @@ const LiveTranscription = () => {
             </div>
           )}
         </button>
-        <div
-          className="settings"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-start",
-            gap: "5px",
-          }}
-        >
+
+        <div className="settings" style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
           <div>
-            <label htmlFor="chunkSelector" style={{ fontSize: "14px" }}>
-              Chunk size!!! (ms):
-            </label>
+            <label htmlFor="chunkSelector" style={{ fontSize: "14px" }}>Chunk size (ms):</label>
             <select
               id="chunkSelector"
               value={chunkDuration}
               onChange={handleChunkSelectorChange}
               style={{
-                fontSize: "16px",
+                fontSize: "14px",
                 padding: "5px",
                 borderRadius: "5px",
                 border: "1px solid #ddd",
                 backgroundColor: "#ffffff",
                 maxHeight: "30px",
+                marginLeft: "5px",
               }}
             >
               <option value="500">500 ms</option>
@@ -399,53 +417,54 @@ const LiveTranscription = () => {
               <option value="5000">5000 ms</option>
             </select>
           </div>
-          <div>
-            <label htmlFor="websocketInput" style={{ fontSize: "14px" }}>
-              WebSocket URL:
-            </label>
-            <input
-              id="websocketInput"
-              type="text"
-              value={websocketUrl}
-              onChange={handleWebsocketInputChange}
-              style={{
-                fontSize: "16px",
-                padding: "5px",
-                borderRadius: "5px",
-                border: "1px solid #ddd",
-                backgroundColor: "#ffffff",
-                maxHeight: "30px",
-                width: "200px",
-              }}
-            />
-          </div>
         </div>
       </div>
-      {/* Status display */}
+
+      {/* 状态显示 */}
       <p
         id="status"
         style={{
-          marginTop: "20px",
-          fontSize: "16px",
-          color: "#333",
-          textAlign: "center",
+          marginTop: "10px",
+          fontSize: "14px",
+          color: "#666",
         }}
       >
-        {status}
+        {statusMessage}
       </p>
-      {/* Transcript display */}
+
+      {/* 视频展示区域 */}
       <div
-        id="linesTranscript"
+        id="videoContainer"
         style={{
-          margin: "20px auto",
-          maxWidth: "700px",
-          textAlign: "left",
-          fontSize: "16px",
+          margin: "10px auto",
+          maxWidth: "100%",
+          textAlign: "center",
+          backgroundColor: "#fff",
+          border: "1px solid #eee",
+          borderRadius: "6px",
+          padding: "8px",
+          minHeight: "200px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
-        dangerouslySetInnerHTML={{ __html: transcriptHTML }}
-      ></div>
+      >
+        {videoSrc ? (
+          <video
+            src={videoSrc}
+            controls
+            style={{ maxWidth: "100%", maxHeight: "100%" }}
+            autoPlay
+            loop
+          />
+        ) : (
+          <span style={{ fontSize: "15px", color: "#888" }}>
+            Generated video will appear here.
+          </span>
+        )}
+      </div>
     </div>
   );
 };
 
-export default LiveTranscription;
+export default SpeechToVideo;
