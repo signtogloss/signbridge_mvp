@@ -7,11 +7,11 @@ import "bootstrap/dist/css/bootstrap.min.css";
 /**
  * SignLanguageGeneration
  * ----------------------
- * A component that displays sign language generation content and includes
- * the SpeechToText component. Styled to match SignLanguageRecognition.
+ * A component that displays sign language generation content.
+ * Now directly renders the SpeechToGlossVideo component without additional container nesting,
+ * following the same design pattern as SpeechToText.js.
  */
 const SignLanguageGeneration = () => {
-
   return (
     <div>
       <div className="card mb-3">
