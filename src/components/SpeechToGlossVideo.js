@@ -37,9 +37,9 @@ const SpeechToGlossVideo = () => {
   const glossVideoWebsocketRef = useRef(null);
 
   // Speech recognition WebSocket URL
-  const speechWebsocketUrl = "wss://0c4c-183-223-25-19.ngrok-free.app/ws/speech2text";
+  const speechWebsocketUrl = "wss://3952-183-223-25-19.ngrok-free.app/ws/speech2text";
   // Gloss to video WebSocket URL
-  const glossVideoWebsocketUrl = "wss://0c4c-183-223-25-19.ngrok-free.app/ws/gloss2video";
+  const glossVideoWebsocketUrl = "wss://3952-183-223-25-19.ngrok-free.app/ws/gloss2video";
 
   /****************************************************************
    * 1. Speech Recognition WebSocket connection + message handling
@@ -146,17 +146,38 @@ const SpeechToGlossVideo = () => {
     });
   }, [glossVideoWebsocketUrl]);
 
+  // 添加一个状态变量来跟踪上一次处理的文本
+  const lastProcessedTextRef = useRef("");
+
   /****************************************************************
    * 3. Text to Gloss conversion
    ****************************************************************/
   const convertTextToGloss = async (text) => {
     try {
-      // This is a simplified version of the text-to-gloss conversion
-      // In a real implementation, you would call an API or use a more sophisticated algorithm
-      console.log("Converting text to gloss:", text);
+      // 检查是否有新的文本需要处理
+      if (text === lastProcessedTextRef.current) {
+        console.log("Text already processed, skipping:", text);
+        return;
+      }
+
+      // 获取新的文本部分（如果有上一次处理的文本）
+      let newText = text;
+      if (lastProcessedTextRef.current && text.startsWith(lastProcessedTextRef.current)) {
+        newText = text.substring(lastProcessedTextRef.current.length).trim();
+      }
+
+      // 如果没有新文本，则返回
+      if (!newText) {
+        return;
+      }
+
+      console.log("Converting new text to gloss:", newText);
+      
+      // 更新上一次处理的文本引用
+      lastProcessedTextRef.current = text;
       
       // Simple rules for demonstration (this should be replaced with actual API call)
-      const simplifiedText = text.toUpperCase()
+      const simplifiedText = newText.toUpperCase()
         .replace(/[.,!?;:]/g, '')
         .replace(/\s+/g, ' ')
         .trim();
@@ -371,9 +392,9 @@ const SpeechToGlossVideo = () => {
   return (
     <div className="speech-to-gloss-video">
       {/* Speech Recognition Section */}
-      <div className="card mb-3">
-        <div className="card-header">Speech to Sign Language Video</div>
-        <div className="card-body">
+      <div className="mb-3">
+        <h4>Speech to Sign Language Video</h4>
+        <div>
           <div className="row mb-3">
             <div className="col">
               <div className="d-flex justify-content-between align-items-center mb-2">
@@ -404,11 +425,9 @@ const SpeechToGlossVideo = () => {
           {/* Transcript Display */}
           <div className="row mb-3">
             <div className="col">
-              <div className="card">
-                <div className="card-header">Transcript</div>
-                <div className="card-body">
-                  <p>{transcriptText || "No transcript yet. Start recording to begin."}</p>
-                </div>
+              <div className="p-3 border rounded">
+                <h5>Transcript</h5>
+                <p>{transcriptText || "No transcript yet. Start recording to begin."}</p>
               </div>
             </div>
           </div>
@@ -416,11 +435,9 @@ const SpeechToGlossVideo = () => {
           {/* Gloss Sequence Display */}
           <div className="row mb-3">
             <div className="col">
-              <div className="card">
-                <div className="card-header">ASL Gloss Sequence</div>
-                <div className="card-body">
-                  <p>{glossSequence.length > 0 ? glossSequence.join(" ") : "No gloss sequence generated yet."}</p>
-                </div>
+              <div className="p-3 border rounded">
+                <h5>ASL Gloss Sequence</h5>
+                <p>{glossSequence.length > 0 ? glossSequence.join(" ") : "No gloss sequence generated yet."}</p>
               </div>
             </div>
           </div>
@@ -428,9 +445,9 @@ const SpeechToGlossVideo = () => {
           {/* Video Display */}
           <div className="row">
             <div className="col">
-              <div className="card">
-                <div className="card-header">Sign Language Video</div>
-                <div className="card-body text-center">
+              <div className="p-3 border rounded">
+                <h5>Sign Language Video</h5>
+                <div className="text-center">
                   {isProcessingVideo ? (
                     <div className="spinner-border" role="status">
                       <span className="visually-hidden">Loading...</span>
