@@ -11,7 +11,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
  *  - websocketUrl: string (WebSocket 服务器 URL)
  */
 const SpeechToVideo = ({
-  websocketUrl = "wss://8494-183-223-25-19.ngrok-free.app/ws/speech2video",
+  websocketUrl = "wss://0c4c-183-223-25-19.ngrok-free.app/ws/speech2video",
 }) => {
   // 状态变量
   const [isRecording, setIsRecording] = useState(false);
