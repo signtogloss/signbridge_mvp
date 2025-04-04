@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import API_ENDPOINTS from "../services/apiConfig";
 
 /**
  * SpeechToGlossVideo
@@ -36,10 +37,10 @@ const SpeechToGlossVideo = () => {
   // Ref for gloss-to-video WebSocket
   const glossVideoWebsocketRef = useRef(null);
 
-  // Speech recognition WebSocket URL
-  const speechWebsocketUrl = "wss://gloss.ngrok.dev/ws/speech2text";
+  // 从apiConfig导入WebSocket URL
+  const speechWebsocketUrl = API_ENDPOINTS.SPEECH_TO_TEXT;
   // Gloss to video WebSocket URL
-  const glossVideoWebsocketUrl = "wss://gloss.ngrok.dev/ws/gloss2video";
+  const glossVideoWebsocketUrl = API_ENDPOINTS.GLOSS_TO_VIDEO;
 
   /****************************************************************
    * 1. Speech Recognition WebSocket connection + message handling

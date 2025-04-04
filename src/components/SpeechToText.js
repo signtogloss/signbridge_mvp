@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import API_ENDPOINTS from "../services/apiConfig";
 
 /**
  * SpeechToText
@@ -9,12 +10,12 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
  *  - displays the transcript in real-time
  * 
  * Props:
- *  - websocketUrl: string (WebSocket server URL). Default "ws://localhost:8000/asr"
+ *  - websocketUrl: string (WebSocket server URL).
  * 
  * Note: This version omits the UI for changing the WebSocket URL. 
  *       Instead, you can pass a URL via props or just edit the default below.
  */
-const SpeechToText = ({ websocketUrl = "wss://gloss.ngrok.dev/ws/speech2text" }) => {
+const SpeechToText = ({ websocketUrl = API_ENDPOINTS.SPEECH_TO_TEXT }) => {
   // State variables
   const [isRecording, setIsRecording] = useState(false);
   const [chunkDuration, setChunkDuration] = useState(1000); // in ms

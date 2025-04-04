@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import API_ENDPOINTS from "../services/apiConfig";
 
 /**
  * SpeechToVideo
@@ -11,7 +12,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
  *  - websocketUrl: string (WebSocket 服务器 URL)
  */
 const SpeechToVideo = ({
-  websocketUrl = "wss://0c4c-183-223-25-19.ngrok-free.app/ws/speech2video",
+  websocketUrl = API_ENDPOINTS.SPEECH_TO_VIDEO,
 }) => {
   // 状态变量
   const [isRecording, setIsRecording] = useState(false);
