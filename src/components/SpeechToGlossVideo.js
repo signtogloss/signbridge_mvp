@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import API_ENDPOINTS from "../services/apiConfig";
+import { textToGlossStream } from "../services/textToGlossService";
 
 /**
  * SpeechToGlossVideo
@@ -172,29 +173,79 @@ const SpeechToGlossVideo = () => {
         return;
       }
 
-      console.log("Converting new text to gloss:", newText);
+      console.log("[Text2Gloss] 开始转换文本到手语词汇:", newText);
+      console.log("[Text2Gloss] 调用textToGlossService.js中的textToGlossStream函数");
       
       // 更新上一次处理的文本引用
       lastProcessedTextRef.current = text;
       
-      // Simple rules for demonstration (this should be replaced with actual API call)
-      const simplifiedText = newText.toUpperCase()
-        .replace(/[.,!?;:]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+      // 使用textToGlossService中的流式API进行转换
+      let glossResult = [];
+      const stream = textToGlossStream(newText);
       
-      // Split into words and filter out empty strings
-      const words = simplifiedText.split(' ').filter(word => word.length > 0);
+      // 监听数据流事件
+      stream.on('data', (chunk) => {
+        console.log("[Text2Gloss] 收到数据块:", chunk);
+        // 处理接收到的数据块，处理连字符分隔的词汇
+        const processedChunk = processGlossChunk(chunk);
+        glossResult = [...glossResult, ...processedChunk];
+        // 更新UI显示
+        setGlossSequence(glossResult);
+      });
       
-      // For demonstration, we'll just use the words as gloss
-      // In a real implementation, you would use the OpenAI API as shown in the Python code
-      setGlossSequence(words);
+      // 监听结束事件
+      stream.on('end', () => {
+        console.log("[Text2Gloss] 转换完成，最终结果:", glossResult.join(' '));
+        // 转换完成后发送到视频生成服务
+        if (glossResult.length > 0) {
+          sendGlossToVideoService(glossResult);
+        }
+      });
       
-      // Send the gloss sequence to the video generation service
-      sendGlossToVideoService(words);
+      // 监听错误事件
+      stream.on('error', (error) => {
+        console.error("[Text2Gloss] 转换过程中出错:", error);
+        // 如果出错，尝试使用简单的备用方法
+        console.log("[Text2Gloss] 使用备用方法进行转换");
+        const simplifiedText = newText.toUpperCase()
+          .replace(/[.,!?;:]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        
+        const words = simplifiedText.split(' ').filter(word => word.length > 0);
+        const processedWords = words.flatMap(word => processGlossChunk(word));
+        setGlossSequence(processedWords);
+        sendGlossToVideoService(processedWords);
+      });
+
     } catch (error) {
       console.error("Error converting text to gloss:", error);
     }
+  };
+  
+  /**
+   * 处理手语词汇，将带连字符的词汇（如A-N-D-R-E-W）拆分为单独的字母
+   * @param {string} chunk - 手语词汇
+   * @returns {string[]} - 处理后的词汇数组
+   */
+  const processGlossChunk = (chunk) => {
+    // 移除可能的空白字符
+    const trimmedChunk = chunk.trim();
+    
+    // 检查是否包含连字符
+    if (trimmedChunk.includes('-')) {
+      // 检查是否是字母拼写（如A-N-D-R-E-W）
+      const isSpelling = /^[A-Z](-[A-Z])+$/.test(trimmedChunk);
+      
+      if (isSpelling) {
+        // 将连字符分隔的字母拆分为单独的字母
+        console.log("[Text2Gloss] 拆分字母拼写:", trimmedChunk);
+        return trimmedChunk.split('-');
+      }
+    }
+    
+    // 如果不是字母拼写，按空格分割并过滤空字符串
+    return trimmedChunk.split(/\s+/).filter(word => word.length > 0);
   };
 
   /****************************************************************
