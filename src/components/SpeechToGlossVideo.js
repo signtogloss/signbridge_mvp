@@ -37,9 +37,9 @@ const SpeechToGlossVideo = () => {
   const glossVideoWebsocketRef = useRef(null);
 
   // Speech recognition WebSocket URL
-  const speechWebsocketUrl = "wss://3952-183-223-25-19.ngrok-free.app/ws/speech2text";
+  const speechWebsocketUrl = "wss://gloss.ngrok.dev/ws/speech2text";
   // Gloss to video WebSocket URL
-  const glossVideoWebsocketUrl = "wss://3952-183-223-25-19.ngrok-free.app/ws/gloss2video";
+  const glossVideoWebsocketUrl = "wss://gloss.ngrok.dev/ws/gloss2video";
 
   /****************************************************************
    * 1. Speech Recognition WebSocket connection + message handling
