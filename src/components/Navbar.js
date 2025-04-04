@@ -23,7 +23,7 @@ const Navbar = () => {
               <Link className="nav-link hover-lift" aria-current="page" to="/">ASL bidirectional translation</Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link hover-lift" to="/new">New ASL Translation (GPT)</Link>
+              <Link className="nav-link hover-lift" to="/new">Speech2Text</Link>
             </li>
           </ul>
         </div>
