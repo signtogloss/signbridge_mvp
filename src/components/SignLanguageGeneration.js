@@ -1,6 +1,5 @@
 import React from "react";
 import SpeechToText from "./SpeechToText";
-import SpeechToVideo from "./SpeechToVideo";
 import SpeechToGlossVideo from "./SpeechToGlossVideo";
 import "bootstrap/dist/css/bootstrap.min.css";
 
@@ -19,7 +18,6 @@ const SignLanguageGeneration = () => {
         <div className="card-body">
           {/* Speech-to-text component */}
           {/* <SpeechToText /> */}
-          {/* <SpeechToVideo /> */}
           <SpeechToGlossVideo />
         </div>
       </div>
