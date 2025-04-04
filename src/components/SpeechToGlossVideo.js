@@ -83,10 +83,8 @@ const SpeechToGlossVideo = () => {
             const fullText = text + buffer_transcription;
             setTranscriptText(fullText);
             
-            // If we have a complete sentence, convert it to gloss
-            if (fullText.trim() && (fullText.endsWith(".") || fullText.endsWith("?") || fullText.endsWith("!"))) {
-              convertTextToGloss(fullText);
-            }
+            // 不再在这里调用convertTextToGloss
+            // 现在通过useEffect监听transcriptText变化来触发转换
           }
         };
         websocketRef.current = ws;
@@ -148,75 +146,88 @@ const SpeechToGlossVideo = () => {
     });
   }, [glossVideoWebsocketUrl]);
 
-  // 添加一个状态变量来跟踪上一次处理的文本
-  const lastProcessedTextRef = useRef("");
+  // 用于跟踪已处理的句子
+  const processedSentencesRef = useRef(new Set());
 
   /****************************************************************
    * 3. Text to Gloss conversion
    ****************************************************************/
   const convertTextToGloss = async (text) => {
     try {
-      // 检查是否有新的文本需要处理
-      if (text === lastProcessedTextRef.current) {
-        console.log("Text already processed, skipping:", text);
+      // 确保文本非空
+      if (!text || text.trim() === "") {
         return;
       }
 
-      // 获取新的文本部分（如果有上一次处理的文本）
-      let newText = text;
-      if (lastProcessedTextRef.current && text.startsWith(lastProcessedTextRef.current)) {
-        newText = text.substring(lastProcessedTextRef.current.length).trim();
-      }
-
-      // 如果没有新文本，则返回
-      if (!newText) {
+      // 提取完整句子（以句号、问号或感叹号结尾的文本）
+      const sentenceRegex = /[^.!?]+[.!?]+/g;
+      const sentences = text.match(sentenceRegex) || [];
+      
+      // 如果没有完整句子，则返回
+      if (sentences.length === 0) {
         return;
       }
-
-      console.log("[Text2Gloss] 开始转换文本到手语词汇:", newText);
-      console.log("[Text2Gloss] 调用textToGlossService.js中的textToGlossStream函数");
       
-      // 更新上一次处理的文本引用
-      lastProcessedTextRef.current = text;
-      
-      // 使用textToGlossService中的流式API进行转换
-      let glossResult = [];
-      const stream = textToGlossStream(newText);
-      
-      // 监听数据流事件
-      stream.on('data', (chunk) => {
-        console.log("[Text2Gloss] 收到数据块:", chunk);
-        // 处理接收到的数据块，处理连字符分隔的词汇
-        const processedChunk = processGlossChunk(chunk);
-        glossResult = [...glossResult, ...processedChunk];
-        // 更新UI显示
-        setGlossSequence(glossResult);
-      });
-      
-      // 监听结束事件
-      stream.on('end', () => {
-        console.log("[Text2Gloss] 转换完成，最终结果:", glossResult.join(' '));
-        // 转换完成后发送到视频生成服务
-        if (glossResult.length > 0) {
-          sendGlossToVideoService(glossResult);
+      // 检查是否有新句子需要处理
+      const newSentences = sentences.filter(sentence => {
+        // 如果句子已经处理过，则跳过
+        if (processedSentencesRef.current.has(sentence.trim())) {
+          return false;
         }
+        // 标记为已处理
+        processedSentencesRef.current.add(sentence.trim());
+        return true;
       });
       
-      // 监听错误事件
-      stream.on('error', (error) => {
-        console.error("[Text2Gloss] 转换过程中出错:", error);
-        // 如果出错，尝试使用简单的备用方法
-        console.log("[Text2Gloss] 使用备用方法进行转换");
-        const simplifiedText = newText.toUpperCase()
-          .replace(/[.,!?;:]/g, '')
-          .replace(/\s+/g, ' ')
-          .trim();
+      // 如果没有新句子，则返回
+      if (newSentences.length === 0) {
+        return;
+      }
+      
+      // 处理每个新句子
+      for (const sentence of newSentences) {
+        console.log("[Text2Gloss] 开始转换新句子到手语词汇:", sentence);
+        console.log("[Text2Gloss] 调用textToGlossService.js中的textToGlossStream函数");
         
-        const words = simplifiedText.split(' ').filter(word => word.length > 0);
-        const processedWords = words.flatMap(word => processGlossChunk(word));
-        setGlossSequence(processedWords);
-        sendGlossToVideoService(processedWords);
-      });
+        // 使用textToGlossService中的流式API进行转换
+        let glossResult = [];
+        const stream = textToGlossStream(sentence);
+        
+        // 监听数据流事件
+        stream.on('data', (chunk) => {
+          console.log("[Text2Gloss] 收到数据块:", chunk);
+          // 处理接收到的数据块，处理连字符分隔的词汇
+          const processedChunk = processGlossChunk(chunk);
+          glossResult = [...glossResult, ...processedChunk];
+          // 更新UI显示
+          setGlossSequence(glossResult);
+        });
+        
+        // 监听结束事件
+        stream.on('end', () => {
+          console.log("[Text2Gloss] 转换完成，最终结果:", glossResult.join(' '));
+          // 转换完成后发送到视频生成服务
+          if (glossResult.length > 0) {
+            sendGlossToVideoService(glossResult);
+          }
+        });
+        
+        // 监听错误事件
+        stream.on('error', (error) => {
+          console.error("[Text2Gloss] 转换过程中出错:", error);
+          // 如果出错，尝试使用简单的备用方法
+          console.log("[Text2Gloss] 使用备用方法进行转换");
+          const simplifiedText = sentence.toUpperCase()
+            .replace(/[.,!?;:]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          
+          const words = simplifiedText.split(' ').filter(word => word.length > 0);
+          const processedWords = words.flatMap(word => processGlossChunk(word));
+          setGlossSequence(processedWords);
+          sendGlossToVideoService(processedWords);
+        });
+      }
 
     } catch (error) {
       console.error("Error converting text to gloss:", error);
@@ -424,6 +435,13 @@ const SpeechToGlossVideo = () => {
       }
     };
   }, [setupGlossVideoWebSocket]);
+
+  // 监听transcriptText变化，当有新的完整句子时立即转换为手语词汇
+  useEffect(() => {
+    if (transcriptText.trim()) {
+      convertTextToGloss(transcriptText);
+    }
+  }, [transcriptText]);
 
   // Handle recording start/stop
   const handleToggleRecording = async () => {
