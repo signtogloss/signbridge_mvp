@@ -510,8 +510,8 @@ const SpeechToGlossVideo = () => {
                 ref={waveCanvasRef}
                 className="waveform"
                 width="600"
-                height="100"
-                style={{ width: "100%", height: "100px", backgroundColor: "#f8f9fa" }}
+                height="60"
+                style={{ width: "100%", height: "60px", backgroundColor: "#f8f9fa" }}
               ></canvas>
             </div>
           </div>
@@ -537,17 +537,7 @@ const SpeechToGlossVideo = () => {
             </div>
           </div>
           
-          {/* Gloss Sequence Display */}
-          <div className="row mb-3">
-            <div className="col">
-              <div className="p-3 border rounded">
-                <h5>ASL Gloss Sequence</h5>
-                <p>{glossSequence.length > 0 ? glossSequence.join(" ") : "No gloss sequence generated yet."}</p>
-              </div>
-            </div>
-          </div>
-          
-          {/* Video Display */}
+          {/* Video Display with Gloss Captions */}
           <div className="row">
             <div className="col">
               <div className="p-3 border rounded">
@@ -558,12 +548,17 @@ const SpeechToGlossVideo = () => {
                       <span className="visually-hidden">Loading...</span>
                     </div>
                   ) : videoUrl ? (
-                    <video 
-                      src={videoUrl} 
-                      controls 
-                      autoPlay 
-                      style={{ maxWidth: "100%", maxHeight: "300px" }}
-                    ></video>
+                    <>
+                      <video 
+                        src={videoUrl} 
+                        controls 
+                        autoPlay 
+                        style={{ maxWidth: "100%", maxHeight: "300px" }}
+                      ></video>
+                      <div className="gloss-caption mt-2 p-2" style={{ backgroundColor: "rgba(0,0,0,0.05)", borderRadius: "4px" }}>
+                        {glossSequence.length > 0 ? glossSequence.join(" ") : "No gloss sequence generated yet."}
+                      </div>
+                    </>
                   ) : (
                     <p>No video generated yet.</p>
                   )}
