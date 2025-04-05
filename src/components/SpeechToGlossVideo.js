@@ -155,8 +155,14 @@ const SpeechToGlossVideo = () => {
     });
   }, [glossVideoWebsocketUrl]);
 
-  // 用于跟踪已处理的句子
-  const processedSentencesRef = useRef(new Set());
+  // 用于跟踪已处理的句子及其时间戳
+  const processedSentencesRef = useRef(new Map());
+  // 用于跟踪当前正在处理的句子
+  const currentSentenceRef = useRef("");
+  // 用于跟踪句子稳定的计时器
+  const sentenceStabilityTimerRef = useRef(null);
+  // 句子稳定时间（毫秒）
+  const SENTENCE_STABILITY_TIMEOUT = 1000;
 
   /****************************************************************
    * 3. Text to Gloss conversion
@@ -168,75 +174,47 @@ const SpeechToGlossVideo = () => {
         return;
       }
 
-      // 提取完整句子（以句号、问号或感叹号结尾的文本）
-      const sentenceRegex = /[^.!?]+[.!?]+/g;
-      const sentences = text.match(sentenceRegex) || [];
+      console.log("[Text2Gloss] 开始转换句子到手语词汇:", text);
+      console.log("[Text2Gloss] 调用textToGlossService.js中的textToGlossStream函数");
       
-      // 如果没有完整句子，则返回
-      if (sentences.length === 0) {
-        return;
-      }
+      // 使用textToGlossService中的流式API进行转换
+      let glossResult = [];
+      const stream = textToGlossStream(text);
       
-      // 检查是否有新句子需要处理
-      const newSentences = sentences.filter(sentence => {
-        // 如果句子已经处理过，则跳过
-        if (processedSentencesRef.current.has(sentence.trim())) {
-          return false;
-        }
-        // 标记为已处理
-        processedSentencesRef.current.add(sentence.trim());
-        return true;
+      // 监听数据流事件
+      stream.on('data', (chunk) => {
+        console.log("[Text2Gloss] 收到数据块:", chunk);
+        // 处理接收到的数据块，处理连字符分隔的词汇
+        const processedChunk = processGlossChunk(chunk);
+        glossResult = [...glossResult, ...processedChunk];
+        // 更新UI显示
+        setGlossSequence(glossResult);
       });
       
-      // 如果没有新句子，则返回
-      if (newSentences.length === 0) {
-        return;
-      }
+      // 监听结束事件
+      stream.on('end', () => {
+        console.log("[Text2Gloss] 转换完成，最终结果:", glossResult.join(' '));
+        // 转换完成后发送到视频生成服务
+        if (glossResult.length > 0) {
+          sendGlossToVideoService(glossResult);
+        }
+      });
       
-      // 处理每个新句子
-      for (const sentence of newSentences) {
-        console.log("[Text2Gloss] 开始转换新句子到手语词汇:", sentence);
-        console.log("[Text2Gloss] 调用textToGlossService.js中的textToGlossStream函数");
+      // 监听错误事件
+      stream.on('error', (error) => {
+        console.error("[Text2Gloss] 转换过程中出错:", error);
+        // 如果出错，尝试使用简单的备用方法
+        console.log("[Text2Gloss] 使用备用方法进行转换");
+        const simplifiedText = text.toUpperCase()
+          .replace(/[.,!?;:]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
         
-        // 使用textToGlossService中的流式API进行转换
-        let glossResult = [];
-        const stream = textToGlossStream(sentence);
-        
-        // 监听数据流事件
-        stream.on('data', (chunk) => {
-          console.log("[Text2Gloss] 收到数据块:", chunk);
-          // 处理接收到的数据块，处理连字符分隔的词汇
-          const processedChunk = processGlossChunk(chunk);
-          glossResult = [...glossResult, ...processedChunk];
-          // 更新UI显示
-          setGlossSequence(glossResult);
-        });
-        
-        // 监听结束事件
-        stream.on('end', () => {
-          console.log("[Text2Gloss] 转换完成，最终结果:", glossResult.join(' '));
-          // 转换完成后发送到视频生成服务
-          if (glossResult.length > 0) {
-            sendGlossToVideoService(glossResult);
-          }
-        });
-        
-        // 监听错误事件
-        stream.on('error', (error) => {
-          console.error("[Text2Gloss] 转换过程中出错:", error);
-          // 如果出错，尝试使用简单的备用方法
-          console.log("[Text2Gloss] 使用备用方法进行转换");
-          const simplifiedText = sentence.toUpperCase()
-            .replace(/[.,!?;:]/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
-          
-          const words = simplifiedText.split(' ').filter(word => word.length > 0);
-          const processedWords = words.flatMap(word => processGlossChunk(word));
-          setGlossSequence(processedWords);
-          sendGlossToVideoService(processedWords);
-        });
-      }
+        const words = simplifiedText.split(' ').filter(word => word.length > 0);
+        const processedWords = words.flatMap(word => processGlossChunk(word));
+        setGlossSequence(processedWords);
+        sendGlossToVideoService(processedWords);
+      });
 
     } catch (error) {
       console.error("Error converting text to gloss:", error);
@@ -445,11 +423,59 @@ const SpeechToGlossVideo = () => {
     };
   }, [setupGlossVideoWebSocket]);
 
-  // 监听transcriptText变化，当有新的完整句子时立即转换为手语词汇
+  // 监听transcriptText变化，检测完整句子并在稳定后转换为手语词汇
   useEffect(() => {
-    if (transcriptText.trim()) {
-      convertTextToGloss(transcriptText);
+    if (!transcriptText.trim()) return;
+    
+    // 提取完整句子（以句号、问号或感叹号结尾的文本）
+    const sentenceRegex = /[^.!?]+[.!?]+/g;
+    const sentences = transcriptText.match(sentenceRegex) || [];
+    
+    // 如果有完整句子
+    if (sentences.length > 0) {
+      // 获取最后一个完整句子
+      const lastCompleteSentence = sentences[sentences.length - 1].trim();
+      
+      // 如果最后一个完整句子与当前正在处理的句子不同
+      if (lastCompleteSentence !== currentSentenceRef.current) {
+        // 更新当前正在处理的句子
+        currentSentenceRef.current = lastCompleteSentence;
+        
+        // 清除之前的稳定计时器
+        if (sentenceStabilityTimerRef.current) {
+          clearTimeout(sentenceStabilityTimerRef.current);
+        }
+        
+        // 设置新的稳定计时器，确保句子在一段时间内不再变化才处理
+        sentenceStabilityTimerRef.current = setTimeout(() => {
+          // 检查句子是否已经处理过且在有效期内
+          const now = Date.now();
+          const sentenceInfo = processedSentencesRef.current.get(lastCompleteSentence);
+          
+          // 如果句子从未处理过，或者上次处理时间超过30秒，则处理该句子
+          if (!sentenceInfo || (now - sentenceInfo.timestamp > 30000)) {
+            console.log("处理新的完整句子:", lastCompleteSentence);
+            
+            // 更新处理记录
+            processedSentencesRef.current.set(lastCompleteSentence, {
+              timestamp: now,
+              count: sentenceInfo ? sentenceInfo.count + 1 : 1
+            });
+            
+            // 只处理这个最新的完整句子
+            convertTextToGloss(lastCompleteSentence);
+          }
+        }, SENTENCE_STABILITY_TIMEOUT);
+      }
     }
+    
+    // 清理过期的句子记录（超过5分钟的记录）
+    const now = Date.now();
+    processedSentencesRef.current.forEach((info, sentence) => {
+      if (now - info.timestamp > 300000) { // 5分钟 = 300000毫秒
+        processedSentencesRef.current.delete(sentence);
+      }
+    });
   }, [transcriptText]);
 
   // Handle recording start/stop
