@@ -71,21 +71,30 @@ const SpeechToGlossVideo = () => {
         };
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          const {
-            lines = [],
-            buffer_transcription = "",
-          } = data;
+          console.log("WebSocket服务器返回信息:", data);
           
-          // Update transcript
-          if (lines.length > 0) {
-            const lastLine = lines[lines.length - 1];
-            const text = lastLine.text || "";
-            const fullText = text + buffer_transcription;
-            setTranscriptText(fullText);
+          // 处理新的API格式：{text: '文本内容'}
+          if (data.text !== undefined) {
+            // 使用新的处理函数处理简化的文本格式
+            setTranscriptText(data.text);
+          } else {
+            // 兼容旧格式，以防API仍然有时返回旧格式
+            const {
+              lines = [],
+              buffer_transcription = "",
+            } = data;
             
-            // 不再在这里调用convertTextToGloss
-            // 现在通过useEffect监听transcriptText变化来触发转换
+            // Update transcript
+            if (lines.length > 0) {
+              const lastLine = lines[lines.length - 1];
+              const text = lastLine.text || "";
+              const fullText = text + buffer_transcription;
+              setTranscriptText(fullText);
+            }
           }
+          
+          // 不再在这里调用convertTextToGloss
+          // 现在通过useEffect监听transcriptText变化来触发转换
         };
         websocketRef.current = ws;
       } catch (error) {
