@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import API_ENDPOINTS from "../services/apiConfig";
 import { textToGlossStream } from "../services/textToGlossService";
 // import placeholderVideo from "../data/smallPlaceholderVideo.mp4"; //这里切换为小视频
-import placeholderVideo from "../data/Full_placehold.mp4"; //这里切换为完整的视频
+import placeholderVideo from "../data/Full_placehold_1.mp4"; //这里切换为完整的视频
 
 import "./LiveVideoStream.css";
 
