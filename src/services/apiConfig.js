@@ -11,7 +11,7 @@ const API_ENDPOINTS = {
   // WebSocket端点
   SPEECH_TO_TEXT: `${API_BASE_URL}/ws/speech2text`,
   SPEECH_TO_VIDEO: `${API_BASE_URL}/ws/speech2video`,
-  GLOSS_TO_VIDEO: `${API_BASE_URL}/ws/gloss2video`,
+  GLOSS_TO_VIDEO: `${API_BASE_URL}/ws/gloss2video_redis`,
   
   // 其他可能的HTTP端点
   // USER_API: `${API_BASE_URL}/api/users`,

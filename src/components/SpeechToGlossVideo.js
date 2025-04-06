@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import API_ENDPOINTS from "../services/apiConfig";
 import { textToGlossStream } from "../services/textToGlossService";
+// import placeholderVideo from "../data/smallPlaceholderVideo.mp4"; //这里切换为小视频
+import placeholderVideo from "../data/Full_placehold.mp4"; //这里切换为完整的视频
+
+import "./LiveVideoStream.css";
 
 /**
  * SpeechToGlossVideo
@@ -20,8 +24,11 @@ const SpeechToGlossVideo = () => {
   // State variables for gloss and video
   const [glossSequence, setGlossSequence] = useState([]);
   const [videoUrl, setVideoUrl] = useState("");
+  const [placeholderVideoUrl, setPlaceholderVideoUrl] = useState("");
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
   const [videoStatus, setVideoStatus] = useState("");
+  const [isLiveMode, setIsLiveMode] = useState(true); // 控制是否处于直播模式
+  const [hasNewVideo, setHasNewVideo] = useState(false); // 是否有新视频可播放
 
   // Refs for speech recognition
   const websocketRef = useRef(null);
@@ -37,6 +44,7 @@ const SpeechToGlossVideo = () => {
 
   // Ref for gloss-to-video WebSocket
   const glossVideoWebsocketRef = useRef(null);
+  const videoRef = useRef(null); // 视频元素的引用
 
   // 从apiConfig导入WebSocket URL
   const speechWebsocketUrl = API_ENDPOINTS.SPEECH_TO_TEXT;
@@ -129,9 +137,11 @@ const SpeechToGlossVideo = () => {
             console.log("Received binary video data");
             const blob = new Blob([event.data], { type: "video/mp4" });
             const url = URL.createObjectURL(blob);
-            setVideoUrl(url);
+            setVideoUrl(url); // 设置新视频URL
             setIsProcessingVideo(false);
             setVideoStatus("Video generated successfully");
+            // 当收到新视频时，标记有新视频可播放
+            setHasNewVideo(true);
           } else {
             // JSON status message
             const data = JSON.parse(event.data);
@@ -413,15 +423,39 @@ const SpeechToGlossVideo = () => {
   /****************************************************************
    * 6. Component lifecycle
    ****************************************************************/
-  // Initialize WebSockets on component mount
+  // Initialize WebSockets on component mount and setup placeholder video
   useEffect(() => {
+    // 设置占位视频URL
+    setPlaceholderVideoUrl(placeholderVideo);
+    
+    // 连接WebSocket
     setupGlossVideoWebSocket().catch(console.error);
+    
     return () => {
       if (glossVideoWebsocketRef.current) {
         glossVideoWebsocketRef.current.close();
       }
     };
   }, [setupGlossVideoWebSocket]);
+  
+  // 处理视频播放结束事件
+  const handleVideoEnded = useCallback(() => {
+    if (hasNewVideo) {
+      // 如果有新视频并且刚播放完，切换回占位视频
+      setHasNewVideo(false);
+    }
+    // 无论是新视频还是占位视频播放完毕，都确保视频继续播放
+    if (videoRef.current) {
+      videoRef.current.play().catch(err => console.error("自动播放失败:", err));
+    }
+  }, [hasNewVideo]);
+  
+  // 监听视频URL变化，当有新视频时切换到新视频
+  useEffect(() => {
+    if (videoUrl && videoUrl !== placeholderVideoUrl) {
+      setHasNewVideo(true);
+    }
+  }, [videoUrl, placeholderVideoUrl]);
 
   // 监听transcriptText变化，检测完整句子并在稳定后转换为手语词汇
   useEffect(() => {
@@ -541,27 +575,39 @@ const SpeechToGlossVideo = () => {
           <div className="row">
             <div className="col">
               <div className="p-3 border rounded">
-                <h5>Sign Language Video</h5>
+                <h5>Sign Language AI Interpreter </h5>
                 <div className="text-center">
-                  {isProcessingVideo ? (
-                    <div className="spinner-border" role="status">
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
-                  ) : videoUrl ? (
-                    <>
-                      <video 
-                        src={videoUrl} 
-                        controls 
-                        autoPlay 
-                        style={{ maxWidth: "100%", maxHeight: "300px" }}
-                      ></video>
-                      <div className="gloss-caption mt-2 p-2" style={{ backgroundColor: "rgba(0,0,0,0.05)", borderRadius: "4px" }}>
-                        {glossSequence.length > 0 ? glossSequence.join(" ") : "No gloss sequence generated yet."}
+                  <div className="live-video-container">
+                    {isProcessingVideo && (
+                      <div className="loading-overlay">
+                        <div className="spinner-border text-light" role="status">
+                          <span className="visually-hidden">Loading...</span>
+                        </div>
                       </div>
-                    </>
-                  ) : (
-                    <p>No video generated yet.</p>
-                  )}
+                    )}
+                    
+                    {/* 实时指示器 */}
+                    <div className="live-indicator">
+                      <span className={`live-dot ${hasNewVideo ? 'recording' : 'streaming'}`}></span>
+                      <span className="live-text">
+                        {hasNewVideo ? "LIVE" : "STREAMING"}
+                      </span>
+                    </div>
+                    
+                    <video 
+                      ref={videoRef}
+                      src={hasNewVideo ? videoUrl : placeholderVideoUrl} 
+                      autoPlay 
+                      muted={!hasNewVideo} // 占位视频静音播放
+                      loop={!hasNewVideo} // 占位视频循环播放
+                      onEnded={handleVideoEnded}
+                      className="live-video"
+                    ></video>
+                  </div>
+                  
+                  <div className={`gloss-caption ${hasNewVideo ? 'new-content' : ''}`}>
+                    {glossSequence.length > 0 ? glossSequence.join(" ") : "等待手语翻译..."}
+                  </div>
                   <p className="mt-2">{videoStatus}</p>
                 </div>
               </div>
