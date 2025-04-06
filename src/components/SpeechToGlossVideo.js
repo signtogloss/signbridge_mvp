@@ -29,6 +29,7 @@ const SpeechToGlossVideo = () => {
   const [videoStatus, setVideoStatus] = useState("");
   const [isLiveMode, setIsLiveMode] = useState(true); // 控制是否处于直播模式
   const [hasNewVideo, setHasNewVideo] = useState(false); // 是否有新视频可播放
+  const [isVideoLoading, setIsVideoLoading] = useState(false); // 新增：跟踪视频是否正在加载中
 
   // Refs for speech recognition
   const websocketRef = useRef(null);
@@ -445,17 +446,112 @@ const SpeechToGlossVideo = () => {
       setHasNewVideo(false);
     }
     // 无论是新视频还是占位视频播放完毕，都确保视频继续播放
-    if (videoRef.current) {
-      videoRef.current.play().catch(err => console.error("自动播放失败:", err));
+    if (videoRef.current && !isVideoLoading) {
+      // 确保所有视频都是静音的，避免自动播放策略限制
+      videoRef.current.muted = true;
+      
+      // 使用延迟来避免播放请求被新的加载请求中断
+      setTimeout(() => {
+        if (videoRef.current && !isVideoLoading) {
+          videoRef.current.play()
+            .catch(err => {
+              console.warn("视频播放失败:", err);
+            });
+        }
+      }, 100); // 短暂延迟，给浏览器足够时间处理之前的请求
     }
-  }, [hasNewVideo]);
+  }, [hasNewVideo, isVideoLoading]);
   
-  // 监听视频URL变化，当有新视频时切换到新视频
+  // 监听视频URL变化，当有新视频时切换到新视频并确保播放
   useEffect(() => {
     if (videoUrl && videoUrl !== placeholderVideoUrl) {
+      // 标记视频正在加载中
+      setIsVideoLoading(true);
       setHasNewVideo(true);
+      
+      // 给视频元素一点时间加载新视频
+      setTimeout(() => {
+        if (videoRef.current) {
+          // 所有视频都使用静音播放，避免自动播放策略限制
+          videoRef.current.muted = true;
+          
+          // 播放视频并处理可能的错误
+          videoRef.current.play()
+            .catch(err => {
+              console.warn("视频播放失败:", err);
+            })
+            .finally(() => {
+              // 无论成功失败，标记视频加载完成
+              setIsVideoLoading(false);
+            });
+        }
+      }, 200);
     }
   }, [videoUrl, placeholderVideoUrl]);
+  
+  // 监听视频加载完成事件
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+    
+    const handleLoadedData = () => {
+      if (hasNewVideo && videoElement) {
+        // 确保视频是静音的
+        videoElement.muted = true;
+         
+        // 标记视频加载完成
+        setIsVideoLoading(false);
+         
+        // 使用延迟来避免播放请求冲突
+        setTimeout(() => {
+          if (videoElement && !isVideoLoading) {
+            videoElement.play()
+              .catch(err => console.warn("视频加载后播放失败:", err));
+          }
+        }, 100);
+      }
+    };
+    
+    // 添加canplaythrough事件监听，这个事件在视频可以流畅播放时触发
+    // 比loadeddata更可靠，确保视频有足够的缓冲
+    const handleCanPlayThrough = () => {
+      if (hasNewVideo && videoElement && !isVideoLoading) {
+        videoElement.muted = true;
+        videoElement.play()
+          .catch(err => console.warn("视频可以播放时播放失败:", err));
+      }
+    };
+    
+    videoElement.addEventListener('loadeddata', handleLoadedData);
+    videoElement.addEventListener('canplaythrough', handleCanPlayThrough);
+    
+    return () => {
+      videoElement.removeEventListener('loadeddata', handleLoadedData);
+      videoElement.removeEventListener('canplaythrough', handleCanPlayThrough);
+    };
+  }, [hasNewVideo, isVideoLoading]);
+
+  // 添加视频错误处理
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+    
+    const handleError = (e) => {
+      console.error("视频播放错误:", e);
+      setIsVideoLoading(false);
+      
+      // 如果视频出错，尝试回退到占位视频
+      if (hasNewVideo) {
+        setHasNewVideo(false);
+      }
+    };
+    
+    videoElement.addEventListener('error', handleError);
+    
+    return () => {
+      videoElement.removeEventListener('error', handleError);
+    };
+  }, [hasNewVideo]);
 
   // 监听transcriptText变化，检测完整句子并在稳定后转换为手语词汇
   useEffect(() => {
@@ -578,30 +674,30 @@ const SpeechToGlossVideo = () => {
                 <h5>Sign Language AI Interpreter </h5>
                 <div className="text-center">
                   <div className="live-video-container">
-                    {isProcessingVideo && (
-                      <div className="loading-overlay">
-                        <div className="spinner-border text-light" role="status">
-                          <span className="visually-hidden">Loading...</span>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* 实时指示器 */}
+                    {/* 移除加载动画覆盖层，避免阻塞视频显示 */}
+                    {/* 实时指示器 - 保留这个，它不会阻塞视频显示 */}
                     <div className="live-indicator">
                       <span className={`live-dot ${hasNewVideo ? 'recording' : 'streaming'}`}></span>
                       <span className="live-text">
                         {hasNewVideo ? "LIVE" : "STREAMING"}
                       </span>
+                      {isProcessingVideo && (
+                        <span className="ms-2">
+                          <small>处理中...</small>
+                        </span>
+                      )}
                     </div>
                     
                     <video 
                       ref={videoRef}
                       src={hasNewVideo ? videoUrl : placeholderVideoUrl} 
                       autoPlay 
+                      playsInline
                       muted={!hasNewVideo} // 占位视频静音播放
                       loop={!hasNewVideo} // 占位视频循环播放
                       onEnded={handleVideoEnded}
                       className="live-video"
+                      preload="auto"
                     ></video>
                   </div>
                   
