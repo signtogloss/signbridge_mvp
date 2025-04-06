@@ -1,8 +1,8 @@
 import { EventEmitter } from 'events';
 import glossList from '../data/glossList.json';
 
-const DEEPSEEK_API_KEY = process.env.REACT_APP_DEEPSEEK_API_KEY;
-const DEEPSEEK_BASE_URL = process.env.REACT_APP_DEEPSEEK_BASE_URL;
+const OPENAI_API_KEY = process.env.REACT_APP_OPENAI_API_KEY;
+const OPENAI_BASE_URL = process.env.REACT_APP_OPENAI_BASE_URL || 'https://api.openai.com/v1';
 
 const systemPrompt = `Below is the allowed vocabulary for ASL gloss (${glossList.length} words):
 ${glossList.join(' ')}
@@ -18,14 +18,14 @@ export const textToGlossStream = (text) => {
   
   (async () => {
     try {
-      const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
+      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: "deepseek-chat",
+          model: "gpt-4o",
           stream: true,
           messages: [
             { role: "system", content: systemPrompt },
