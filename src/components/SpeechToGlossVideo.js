@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import API_ENDPOINTS from "../services/apiConfig";
 import { textToGlossStream } from "../services/textToGlossService";
 // import placeholderVideo from "../data/smallPlaceholderVideo.mp4"; //这里切换为小视频
-import placeholderVideo from "../data/Full_placehold_1.mp4"; //这里切换为完整的视频
+import placeholderVideo from "../data/smallPlaceholderVideo.mp4"; //这里切换为完整的视频
 
 import "./LiveVideoStream.css";
 
@@ -702,7 +702,7 @@ const SpeechToGlossVideo = () => {
                   </div>
                   
                   <div className={`gloss-caption ${hasNewVideo ? 'new-content' : ''}`}>
-                    {glossSequence.length > 0 ? glossSequence.join(" ") : "等待手语翻译..."}
+                    {glossSequence.length > 0 ? glossSequence.join(" ") : "waiting to translate"}
                   </div>
                   <p className="mt-2">{videoStatus}</p>
                 </div>
