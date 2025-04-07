@@ -63,8 +63,8 @@ const SpeechToText = ({ websocketUrl = API_ENDPOINTS.SPEECH_TO_TEXT }) => {
         };
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          // 打印WebSocket服务器返回的所有信息到控制台
-          console.log("WebSocket服务器返回信息:", data);
+          // Print all information returned by the WebSocket server to the console
+          console.log("WebSocket server response:", data);
           
           // 处理新的API格式：{text: '文本内容'}
           if (data.text !== undefined) {
@@ -97,7 +97,7 @@ const SpeechToText = ({ websocketUrl = API_ENDPOINTS.SPEECH_TO_TEXT }) => {
     });
   }, [websocketUrl]);
 
-  // 处理新的API格式：简单文本
+  // Handle new API format: simple text
   const renderSimpleText = useCallback((text) => {
     // 将新文本添加到现有文本中，保持简单格式
     // 这里我们不需要处理speaker、时间信息等复杂内容

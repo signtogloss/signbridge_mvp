@@ -14,7 +14,7 @@ import "./ZoomStyleLayout.css";
  * sends the gloss to a WebSocket server to generate a sign language video.
  * 
  * @param {Object} props
- * @param {boolean} props.compact - 是否使用紧凑模式（用于在视频播放区域显示）
+ * @param {boolean} props.compact - Whether to use compact mode (for display in video playback area)
  */
 const SpeechToGlossVideo = ({ compact = false, onGlossUpdate }) => {
   // State variables for speech recognition
@@ -30,9 +30,10 @@ const SpeechToGlossVideo = ({ compact = false, onGlossUpdate }) => {
   const [placeholderVideoUrl, setPlaceholderVideoUrl] = useState("");
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
   const [videoStatus, setVideoStatus] = useState("");
-  const [isLiveMode, setIsLiveMode] = useState(true); // 控制是否处于直播模式
-  const [hasNewVideo, setHasNewVideo] = useState(false); // 是否有新视频可播放
-  const [isVideoLoading, setIsVideoLoading] = useState(false); // 新增：跟踪视频是否正在加载中
+  const [isLiveMode, setIsLiveMode] = useState(true); // Controls whether in live mode
+  const [hasNewVideo, setHasNewVideo] = useState(false); // Whether new video is available for playback
+  const [isVideoLoading, setIsVideoLoading] = useState(false); // Tracks if video is currently loading
+  const [playbackRate, setPlaybackRate] = useState(1.5); // Playback speed control, default to 1.5x
 
   // Refs for speech recognition
   const websocketRef = useRef(null);
@@ -48,7 +49,7 @@ const SpeechToGlossVideo = ({ compact = false, onGlossUpdate }) => {
 
   // Ref for gloss-to-video WebSocket
   const glossVideoWebsocketRef = useRef(null);
-  const videoRef = useRef(null); // 视频元素的引用
+  const videoRef = useRef(null); // Reference to video element
 
   // 从apiConfig导入WebSocket URL
   const speechWebsocketUrl = API_ENDPOINTS.SPEECH_TO_TEXT;
@@ -83,7 +84,7 @@ const SpeechToGlossVideo = ({ compact = false, onGlossUpdate }) => {
         };
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          console.log("WebSocket服务器返回信息:", data);
+          console.log("WebSocket server response:", data);
           
           // 处理新的API格式：{text: '文本内容'}
           if (data.text !== undefined) {
@@ -169,13 +170,13 @@ const SpeechToGlossVideo = ({ compact = false, onGlossUpdate }) => {
     });
   }, [glossVideoWebsocketUrl]);
 
-  // 用于跟踪已处理的句子及其时间戳
+  // For tracking processed sentences and their timestamps
   const processedSentencesRef = useRef(new Map());
-  // 用于跟踪当前正在处理的句子
+  // For tracking the currently processing sentence
   const currentSentenceRef = useRef("");
-  // 用于跟踪句子稳定的计时器
+  // For tracking sentence stability timer
   const sentenceStabilityTimerRef = useRef(null);
-  // 句子稳定时间（毫秒）
+  // Sentence stability timeout (milliseconds)
   const SENTENCE_STABILITY_TIMEOUT = 1000;
   
   // 当gloss序列更新时，通知父组件
@@ -195,8 +196,8 @@ const SpeechToGlossVideo = ({ compact = false, onGlossUpdate }) => {
         return;
       }
 
-      console.log("[Text2Gloss] 开始转换句子到手语词汇:", text);
-      console.log("[Text2Gloss] 调用textToGlossService.js中的textToGlossStream函数");
+      console.log("[Text2Gloss] Starting to convert sentence to sign language vocabulary:", text);
+      console.log("[Text2Gloss] Calling textToGlossStream function in textToGlossService.js");
       
       // 使用textToGlossService中的流式API进行转换
       let glossResult = [];
@@ -484,6 +485,8 @@ const SpeechToGlossVideo = ({ compact = false, onGlossUpdate }) => {
         if (videoRef.current) {
           // 所有视频都使用静音播放，避免自动播放策略限制
           videoRef.current.muted = true;
+          // 设置播放速度
+          videoRef.current.playbackRate = playbackRate;
           
           // 播放视频并处理可能的错误
           videoRef.current.play()
@@ -497,7 +500,7 @@ const SpeechToGlossVideo = ({ compact = false, onGlossUpdate }) => {
         }
       }, 200);
     }
-  }, [videoUrl, placeholderVideoUrl]);
+  }, [videoUrl, placeholderVideoUrl, playbackRate]);
   
   // 监听视频加载完成事件
   useEffect(() => {
@@ -508,6 +511,8 @@ const SpeechToGlossVideo = ({ compact = false, onGlossUpdate }) => {
       if (hasNewVideo && videoElement) {
         // 确保视频是静音的
         videoElement.muted = true;
+        // 设置播放速度
+        videoElement.playbackRate = playbackRate;
          
         // 标记视频加载完成
         setIsVideoLoading(false);
@@ -698,7 +703,25 @@ const SpeechToGlossVideo = ({ compact = false, onGlossUpdate }) => {
             onEnded={handleVideoEnded}
             className="live-video"
             preload="auto"
+            playbackRate={playbackRate}
           ></video>
+          {/* Playback speed control */}
+          <div className="position-absolute top-0 end-0 m-2 bg-dark bg-opacity-75 p-1 rounded text-white" style={{zIndex: 10}}>
+            <div className="d-flex align-items-center">
+              <small className="me-1">Speed:</small>
+              <select 
+                className="form-select form-select-sm" 
+                value={playbackRate} 
+                onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
+                style={{width: '70px'}}
+              >
+                <option value="0.5">0.5x</option>
+                <option value="1">1x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2x</option>
+              </select>
+            </div>
+          </div>
         </div>
         
         <div className={`gloss-caption ${hasNewVideo ? 'new-content' : ''}`} style={{ backgroundColor: "rgba(0, 0, 0, 0.7)", color: "white", padding: "10px", borderRadius: "8px" }}>
@@ -729,7 +752,7 @@ const SpeechToGlossVideo = ({ compact = false, onGlossUpdate }) => {
             className={`btn btn-sm ${isRecording ? "btn-danger" : "btn-primary"}`}
             onClick={handleToggleRecording}
           >
-            {isRecording ? "停止录音" : "开始录音"}
+            {isRecording ? "Stop Recording" : "Start Recording"}
           </button>
         </div>
         

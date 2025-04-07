@@ -4,11 +4,11 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "./ZoomStyleLayout.css";
 
 /**
- * 手语识别组件
- * 该组件封装了手语识别的功能，包括摄像头访问、手语识别和结果展示
- * @param {Object} props - 组件属性
- * @param {string} props.signSpeakKey - Sign-Speak API密钥
- * @param {function} props.onTextRecognized - 文本识别回调函数，当有新的识别结果时调用
+ * Sign Language Recognition Component
+ * This component encapsulates sign language recognition functionality, including camera access, sign language recognition, and result display
+ * @param {Object} props - Component properties
+ * @param {string} props.signSpeakKey - Sign-Speak API key
+ * @param {function} props.onTextRecognized - Text recognition callback function, called when new recognition results are available
  */
 const SignLanguageRecognition = ({ signSpeakKey, onTextRecognized }) => {
   const videoRef = useRef(null);

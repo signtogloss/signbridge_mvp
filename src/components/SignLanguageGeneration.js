@@ -14,7 +14,7 @@ import "./ZoomStyleLayout.css";
 const SignLanguageGeneration = () => {
   const [glossSequence, setGlossSequence] = useState([]);
   
-  // 处理从SpeechToGlossVideo接收到的gloss序列
+  // Handle gloss sequence received from SpeechToGlossVideo
   const handleGlossUpdate = (glosses) => {
     setGlossSequence(glosses);
   };
@@ -25,10 +25,10 @@ const SignLanguageGeneration = () => {
         <div className="position-absolute top-0 start-0 end-0 bg-dark bg-opacity-50 text-white p-1 text-center" style={{fontSize: "0.8rem", zIndex: 5}}>
           Sign Language Video
         </div>
-        {/* 使用更大的视频区域以显示上半身 */}
+        {/* Use larger video area to display upper body */}
         <SpeechToGlossVideo compact={false} onGlossUpdate={handleGlossUpdate} />
         
-        {/* 字幕区域 - 显示gloss序列 */}
+        {/* Caption area - Display gloss sequence */}
         {glossSequence.length > 0 && (
           <div className="subtitle-area" style={{fontSize: "0.8rem"}}>
             <div className="gloss-sequence">

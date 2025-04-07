@@ -1,6 +1,6 @@
-/* ZoomStyleLayout.css - 模仿Zoom会议和电视台的UI布局样式 */
+/* ZoomStyleLayout.css - UI layout style mimicking Zoom meetings and TV studio */
 
-/* 主容器 - 全屏布局 */
+/* Main container - Fullscreen layout */
 .zoom-layout-container {
   display: flex;
   flex-direction: row; /* 水平布局 */
@@ -13,7 +13,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* 主屏幕区域 - 用于手语识别 */
+/* Main screen area - For sign language recognition */
 .main-screen {
   flex: 7; /* 占据左侧主要空间 */
   position: relative;
@@ -26,7 +26,7 @@
   flex-direction: column;
 }
 
-/* 右侧边栏 - 只包含视频播放 */
+/* Right sidebar - Contains only video playback */
 .sidebar {
   flex: 3; /* 占据右侧空间 */
   display: flex;
@@ -38,7 +38,7 @@
   margin-left: 5px;
 }
 
-/* 视频播放区域 - 占据整个右侧 */
+/* Video playback area - Occupies the entire right side */
 .video-player-container {
   width: 100%;
   border-radius: 8px;
@@ -51,7 +51,7 @@
   height: 100%;
 }
 
-/* 全高度容器 */
+/* Full height container */
 .full-height {
   height: 100%;
   margin-bottom: 0;
@@ -62,7 +62,7 @@
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
 }
 
-/* 语音识别控制区域 - 位于右侧下方 */
+/* Speech recognition control area - Located at the bottom right */
 .speech-controls {
   flex: 4;
   width: 100%;
@@ -74,7 +74,7 @@
   margin-top: 10px;
 }
 
-/* 字幕区域 - 显示识别文本和gloss序列 */
+/* Subtitle area - Displays recognized text and gloss sequence */
 .subtitle-area {
   position: absolute;
   bottom: 0;
@@ -93,7 +93,7 @@
   margin-top: 5px;
 }
 
-/* 波形显示区域 */
+/* Waveform display area */
 .waveform-container {
   width: 100%;
   height: 40px;
@@ -104,14 +104,14 @@
   border: 1px solid #e0e0e0;
 }
 
-/* 控制按钮区域 */
+/* Control buttons area */
 .control-buttons {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-/* 状态指示器 */
+/* Status indicator */
 .status-indicator {
   display: flex;
   align-items: center;
@@ -151,7 +151,7 @@
   }
 }
 
-/* 转录文本区域 */
+/* Transcription text area */
 .transcript-container {
   margin-top: 15px;
   max-height: 100px;
@@ -164,7 +164,7 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* 手语词汇显示区域 */
+/* Sign language vocabulary display area */
 .gloss-container {
   margin-top: 8px;
   font-size: 0.85rem;
@@ -173,7 +173,7 @@
   overflow-y: auto;
 }
 
-/* 响应式调整 */
+/* Responsive adjustments */
 @media (max-width: 768px) {
   .video-player-container,
   .speech-controls {
