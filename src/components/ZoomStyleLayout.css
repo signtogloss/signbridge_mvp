@@ -66,11 +66,12 @@
 .speech-controls {
   flex: 4;
   width: 100%;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.95);
   border-radius: 8px;
-  padding: 10px;
+  padding: 15px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  margin-top: 10px;
 }
 
 /* 字幕区域 - 显示识别文本和gloss序列 */
@@ -95,10 +96,10 @@
 /* 波形显示区域 */
 .waveform-container {
   width: 100%;
-  height: 60px;
+  height: 40px;
   background-color: #fff;
   border-radius: 6px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   overflow: hidden;
   border: 1px solid #e0e0e0;
 }
@@ -152,14 +153,15 @@
 
 /* 转录文本区域 */
 .transcript-container {
-  margin-top: 10px;
-  max-height: 80px;
+  margin-top: 15px;
+  max-height: 100px;
   overflow-y: auto;
-  background-color: #f8f9fa;
-  border-radius: 6px;
-  padding: 8px;
-  font-size: 0.9rem;
-  border: 1px solid #e0e0e0;
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 1rem;
+  border: 1px solid #ddd;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* 手语词汇显示区域 */
