@@ -1,0 +1,203 @@
+/* ZoomStyleLayout.css - 模仿Zoom会议和电视台的UI布局样式 */
+
+/* 主容器 - 全屏布局 */
+.zoom-layout-container {
+  display: flex;
+  flex-direction: row; /* 水平布局 */
+  height: 600px; /* 设置固定高度确保矩形容器 */
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 主屏幕区域 - 用于手语识别 */
+.main-screen {
+  flex: 7; /* 占据左侧主要空间 */
+  position: relative;
+  background-color: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-right: 10px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 右侧边栏 - 只包含视频播放 */
+.sidebar {
+  flex: 3; /* 占据右侧空间 */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 350px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-left: 5px;
+}
+
+/* 视频播放区域 - 占据整个右侧 */
+.video-player-container {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  background-color: #000;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  position: relative;
+  height: 100%;
+}
+
+/* 全高度容器 */
+.full-height {
+  height: 100%;
+  margin-bottom: 0;
+}
+
+.video-player-container:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* 语音识别控制区域 - 位于右侧下方 */
+.speech-controls {
+  flex: 4;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* 字幕区域 - 显示识别文本和gloss序列 */
+.subtitle-area {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 10px;
+  border-radius: 0 0 8px 8px;
+  z-index: 5;
+}
+
+.gloss-sequence {
+  font-size: 0.9rem;
+  color: #ffc107;
+  margin-top: 5px;
+}
+
+/* 波形显示区域 */
+.waveform-container {
+  width: 100%;
+  height: 60px;
+  background-color: #fff;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+}
+
+/* 控制按钮区域 */
+.control-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 状态指示器 */
+.status-indicator {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.status-dot.recording {
+  background-color: #dc3545;
+  animation: pulse 1.5s infinite;
+}
+
+.status-dot.ready {
+  background-color: #28a745;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 转录文本区域 */
+.transcript-container {
+  margin-top: 10px;
+  max-height: 80px;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 0.9rem;
+  border: 1px solid #e0e0e0;
+}
+
+/* 手语词汇显示区域 */
+.gloss-container {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: #666;
+  max-height: 60px;
+  overflow-y: auto;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .video-player-container,
+  .speech-controls {
+    width: 40%;
+    max-width: none;
+  }
+}
+
+@media (max-width: 576px) {
+  .video-player-container {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  
+  .speech-controls {
+    position: relative;
+    bottom: auto;
+    right: auto;
+    width: 100%;
+    max-width: none;
+  }
+  
+  .zoom-layout-container {
+    flex-direction: column;
+  }
+}

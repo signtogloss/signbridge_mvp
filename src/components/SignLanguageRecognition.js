@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { setKey, useSignLanguageRecognition } from "@sign-speak/react-sdk";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "./ZoomStyleLayout.css";
 
 /**
  * 手语识别组件
@@ -100,41 +101,39 @@ const SignLanguageRecognition = ({ signSpeakKey, onTextRecognized }) => {
   };
 
   return (
-    <div>
-      <div className="card mb-3">
-        <div className="card-header">Sign Language Recognition</div>
-        <div className="card-body">
-          <video
-            ref={videoRef}
-            className="img-fluid"
-            style={{ 
-              backgroundColor: "#000",
-              width: "100%",
-              height: "auto",
-              marginBottom: "15px"
-            }}
-          />
-          <div style={{ textAlign: "center" }}>
-            {loading ? (
-              <p>Loading camera/websocket...</p>
-            ) : recording ? (
-              <button className="btn btn-danger" onClick={handleStop}>
-                Stop Recognition
-              </button>
-            ) : (
-              <button className="btn btn-success" onClick={handleStart}>
-                Start Recognition
-              </button>
-            )}
-          </div>
-        </div>
+    <div className="h-100 position-relative">
+      {/* 全屏视频显示 - 调整为更大的尺寸以显示上半身 */}
+      <video
+        ref={videoRef}
+        className="w-100 h-100 object-fit-contain" /* 改为contain以显示完整上半身 */
+        style={{ 
+          backgroundColor: "#000",
+          borderRadius: "8px"
+        }}
+      />
+      
+      {/* 控制按钮 - 底部中央 */}
+      <div className="position-absolute bottom-0 start-50 translate-middle-x mb-3 z-index-10">
+        {loading ? (
+          <div className="badge bg-warning text-dark p-2">Loading camera...</div>
+        ) : recording ? (
+          <button className="btn btn-danger btn-lg shadow" onClick={handleStop}>
+            <i className="bi bi-stop-fill me-1"></i> Stop Recognition
+          </button>
+        ) : (
+          <button className="btn btn-success btn-lg shadow" onClick={handleStart}>
+            <i className="bi bi-camera-video-fill me-1"></i> Start Recognition
+          </button>
+        )}
       </div>
-
-      <div className="card mb-3">
-        <div className="card-header">Recognized Text (Confidence &gt; 0.5)</div>
-        <div className="card-body">
-          <p>{recognizedText || "No recognized text yet."}</p>
-        </div>
+      
+      {/* 状态指示器 - 左上角 */}
+      <div className="position-absolute top-0 start-0 m-3 badge bg-dark bg-opacity-75 p-2 z-index-10">
+        {recording ? (
+          <><span className="status-dot recording me-2"></span> Recording...</>
+        ) : (
+          <><span className="status-dot ready me-2"></span> Ready</>
+        )}
       </div>
     </div>
   );

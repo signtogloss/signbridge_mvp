@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import API_ENDPOINTS from "../services/apiConfig";
 import { textToGlossStream } from "../services/textToGlossService";
-// import placeholderVideo from "../data/smallPlaceholderVideo.mp4"; //这里切换为小视频
-import placeholderVideo from "../data/smallPlaceholderVideo.mp4"; //这里切换为完整的视频
+import placeholderVideo from "../data/smallPlaceholderVideo.mp4";
 
 import "./LiveVideoStream.css";
+import "./ZoomStyleLayout.css";
 
 /**
  * SpeechToGlossVideo
@@ -12,8 +12,11 @@ import "./LiveVideoStream.css";
  * A component that combines speech recognition, text-to-gloss conversion, and gloss-to-video generation.
  * It captures speech, converts it to text, transforms the text to ASL gloss, and then
  * sends the gloss to a WebSocket server to generate a sign language video.
+ * 
+ * @param {Object} props
+ * @param {boolean} props.compact - 是否使用紧凑模式（用于在视频播放区域显示）
  */
-const SpeechToGlossVideo = () => {
+const SpeechToGlossVideo = ({ compact = false, onGlossUpdate }) => {
   // State variables for speech recognition
   const [isRecording, setIsRecording] = useState(false);
   const [chunkDuration, setChunkDuration] = useState(1000); // in ms
@@ -174,6 +177,13 @@ const SpeechToGlossVideo = () => {
   const sentenceStabilityTimerRef = useRef(null);
   // 句子稳定时间（毫秒）
   const SENTENCE_STABILITY_TIMEOUT = 1000;
+  
+  // 当gloss序列更新时，通知父组件
+  useEffect(() => {
+    if (onGlossUpdate && glossSequence.length > 0) {
+      onGlossUpdate(glossSequence);
+    }
+  }, [glossSequence, onGlossUpdate]);
 
   /****************************************************************
    * 3. Text to Gloss conversion
@@ -624,91 +634,107 @@ const SpeechToGlossVideo = () => {
     }
   };
 
+  // 根据是否为紧凑模式渲染不同的UI
+  if (compact) {
+    // 紧凑模式 - 用于视频播放区域
+    return (
+      <div className="h-100 w-100 position-relative">
+        {/* 视频显示 */}
+        <div className="h-100 w-100 bg-dark">
+          <video 
+            ref={videoRef}
+            src={hasNewVideo ? videoUrl : placeholderVideoUrl} 
+            autoPlay 
+            playsInline
+            muted={!hasNewVideo}
+            loop={!hasNewVideo}
+            onEnded={handleVideoEnded}
+            className="h-100 w-100 object-fit-contain"
+            preload="auto"
+          ></video>
+          
+          {/* 实时指示器 */}
+          <div className="live-indicator" style={{zIndex: 10}}>
+            <span className={`live-dot ${hasNewVideo ? 'recording' : 'streaming'}`}></span>
+            <span className="live-text" style={{fontSize: "0.7rem"}}>
+              {hasNewVideo ? "LIVE" : "STREAM"}
+            </span>
+          </div>
+          
+          {/* 手语词汇字幕 - 底部显示 */}
+          <div className="position-absolute bottom-0 start-0 end-0 p-1 bg-dark bg-opacity-75 text-white text-center" style={{fontSize: "0.8rem"}}>
+            {glossSequence.length > 0 ? glossSequence.join(" ") : "waiting..."}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // 标准模式 - Zoom风格布局
   return (
-    <div className="speech-to-gloss-video">
-      {/* Speech Recognition Section */}
+    <div className="position-relative h-100">
+      {/* 视频播放区域 - 主要部分 */}
       <div className="mb-3">
-        <h4>Speech to Sign Language Video</h4>
-        <div>
-          <div className="row mb-3">
-            <div className="col">
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <span className="status-message">{statusMessage}</span>
-                <span className="timer">{timerDisplay}</span>
-              </div>
-              <canvas
-                ref={waveCanvasRef}
-                className="waveform"
-                width="600"
-                height="60"
-                style={{ width: "100%", height: "60px", backgroundColor: "#f8f9fa" }}
-              ></canvas>
-            </div>
+        <div className="live-video-container">
+          <div className="live-indicator">
+            <span className={`live-dot ${hasNewVideo ? 'recording' : 'streaming'}`}></span>
+            <span className="live-text">
+              {hasNewVideo ? "LIVE" : "STREAMING"}
+            </span>
+            {isProcessingVideo && (
+              <span className="ms-2">
+                <small>处理中...</small>
+              </span>
+            )}
           </div>
           
-          <div className="row mb-3">
-            <div className="col text-center">
-              <button
-                className={`btn ${isRecording ? "btn-danger" : "btn-primary"}`}
-                onClick={handleToggleRecording}
-              >
-                {isRecording ? "Stop Recording" : "Start Recording"}
-              </button>
-            </div>
-          </div>
-          
-          {/* Transcript Display */}
-          <div className="row mb-3">
-            <div className="col">
-              <div className="p-3 border rounded">
-                <h5>Transcript</h5>
-                <p>{transcriptText || "No transcript yet. Start recording to begin."}</p>
-              </div>
-            </div>
-          </div>
-          
-          {/* Video Display with Gloss Captions */}
-          <div className="row">
-            <div className="col">
-              <div className="p-3 border rounded">
-                <h5>Sign Language AI Interpreter </h5>
-                <div className="text-center">
-                  <div className="live-video-container">
-                    {/* 移除加载动画覆盖层，避免阻塞视频显示 */}
-                    {/* 实时指示器 - 保留这个，它不会阻塞视频显示 */}
-                    <div className="live-indicator">
-                      <span className={`live-dot ${hasNewVideo ? 'recording' : 'streaming'}`}></span>
-                      <span className="live-text">
-                        {hasNewVideo ? "LIVE" : "STREAMING"}
-                      </span>
-                      {isProcessingVideo && (
-                        <span className="ms-2">
-                          <small>处理中...</small>
-                        </span>
-                      )}
-                    </div>
-                    
-                    <video 
-                      ref={videoRef}
-                      src={hasNewVideo ? videoUrl : placeholderVideoUrl} 
-                      autoPlay 
-                      playsInline
-                      muted={!hasNewVideo} // 占位视频静音播放
-                      loop={!hasNewVideo} // 占位视频循环播放
-                      onEnded={handleVideoEnded}
-                      className="live-video"
-                      preload="auto"
-                    ></video>
-                  </div>
-                  
-                  <div className={`gloss-caption ${hasNewVideo ? 'new-content' : ''}`}>
-                    {glossSequence.length > 0 ? glossSequence.join(" ") : "waiting to translate"}
-                  </div>
-                  <p className="mt-2">{videoStatus}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <video 
+            ref={videoRef}
+            src={hasNewVideo ? videoUrl : placeholderVideoUrl} 
+            autoPlay 
+            playsInline
+            muted={!hasNewVideo}
+            loop={!hasNewVideo}
+            onEnded={handleVideoEnded}
+            className="live-video"
+            preload="auto"
+          ></video>
+        </div>
+        
+        <div className={`gloss-caption ${hasNewVideo ? 'new-content' : ''}`}>
+          {glossSequence.length > 0 ? glossSequence.join(" ") : "waiting to translate"}
+        </div>
+        <p className="mt-1 text-muted small">{videoStatus}</p>
+      </div>
+      
+      {/* 语音识别控制区域 - 右下角 */}
+      <div className="speech-controls">
+        <div className="status-indicator">
+          <span className={`status-dot ${isRecording ? 'recording' : 'ready'}`}></span>
+          <span className="status-text">{statusMessage}</span>
+          <span className="ms-auto">{timerDisplay}</span>
+        </div>
+        
+        <div className="waveform-container">
+          <canvas
+            ref={waveCanvasRef}
+            width="600"
+            height="60"
+            style={{ width: "100%", height: "60px" }}
+          ></canvas>
+        </div>
+        
+        <div className="control-buttons">
+          <button
+            className={`btn btn-sm ${isRecording ? "btn-danger" : "btn-primary"}`}
+            onClick={handleToggleRecording}
+          >
+            {isRecording ? "Stop" : "Start Recording"}
+          </button>
+        </div>
+        
+        <div className="transcript-container">
+          {transcriptText || "No transcript yet. Start recording to begin."}
         </div>
       </div>
     </div>
