@@ -475,6 +475,9 @@ const SpeechToGlossVideo = () => {
           // 所有视频都使用静音播放，避免自动播放策略限制
           videoRef.current.muted = true;
           
+          // 设置视频播放速度为1.5倍
+          videoRef.current.playbackRate = 1.5;
+          
           // 播放视频并处理可能的错误
           videoRef.current.play()
             .catch(err => {
@@ -498,6 +501,9 @@ const SpeechToGlossVideo = () => {
       if (hasNewVideo && videoElement) {
         // 确保视频是静音的
         videoElement.muted = true;
+        
+        // 设置视频播放速度为1.5倍
+        videoElement.playbackRate = 1.5;
          
         // 标记视频加载完成
         setIsVideoLoading(false);
@@ -517,6 +523,8 @@ const SpeechToGlossVideo = () => {
     const handleCanPlayThrough = () => {
       if (hasNewVideo && videoElement && !isVideoLoading) {
         videoElement.muted = true;
+        // 设置视频播放速度为1.5倍
+        videoElement.playbackRate = 1.5;
         videoElement.play()
           .catch(err => console.warn("视频可以播放时播放失败:", err));
       }
@@ -626,10 +634,54 @@ const SpeechToGlossVideo = () => {
 
   return (
     <div className="speech-to-gloss-video">
-      {/* Speech Recognition Section */}
+      {/* 视频播放组件移到顶部 */}
       <div className="mb-3">
         <h4>Speech to Sign Language Video</h4>
         <div>
+          {/* Video Display with Gloss Captions - 移到顶部 */}
+          <div className="row mb-3">
+            <div className="col">
+              <div className="p-3 border rounded">
+                <h5>Sign Language AI Interpreter</h5>
+                <div className="text-center">
+                  <div className="live-video-container">
+                    {/* 实时指示器 */}
+                    <div className="live-indicator">
+                      <span className={`live-dot ${hasNewVideo ? 'recording' : 'streaming'}`}></span>
+                      <span className="live-text">
+                        {hasNewVideo ? "LIVE" : "STREAMING"}
+                      </span>
+                      {isProcessingVideo && (
+                        <span className="ms-2">
+                          <small>处理中...</small>
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* 视频播放速度通过useEffect设置为1.5倍 */}
+                    <video 
+                      ref={videoRef}
+                      src={hasNewVideo ? videoUrl : placeholderVideoUrl} 
+                      autoPlay 
+                      playsInline
+                      muted={!hasNewVideo} // 占位视频静音播放
+                      loop={!hasNewVideo} // 占位视频循环播放
+                      onEnded={handleVideoEnded}
+                      className="live-video"
+                      preload="auto"
+                    ></video>
+                  </div>
+                  
+                  <div className={`gloss-caption ${hasNewVideo ? 'new-content' : ''}`}>
+                    {glossSequence.length > 0 ? glossSequence.join(" ") : "等待手语翻译..."}
+                  </div>
+                  <p className="mt-2">{videoStatus}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* 其他内容移到下面 */}
           <div className="row mb-3">
             <div className="col">
               <div className="d-flex justify-content-between align-items-center mb-2">
@@ -663,49 +715,6 @@ const SpeechToGlossVideo = () => {
               <div className="p-3 border rounded">
                 <h5>Transcript</h5>
                 <p>{transcriptText || "No transcript yet. Start recording to begin."}</p>
-              </div>
-            </div>
-          </div>
-          
-          {/* Video Display with Gloss Captions */}
-          <div className="row">
-            <div className="col">
-              <div className="p-3 border rounded">
-                <h5>Sign Language AI Interpreter </h5>
-                <div className="text-center">
-                  <div className="live-video-container">
-                    {/* 移除加载动画覆盖层，避免阻塞视频显示 */}
-                    {/* 实时指示器 - 保留这个，它不会阻塞视频显示 */}
-                    <div className="live-indicator">
-                      <span className={`live-dot ${hasNewVideo ? 'recording' : 'streaming'}`}></span>
-                      <span className="live-text">
-                        {hasNewVideo ? "LIVE" : "STREAMING"}
-                      </span>
-                      {isProcessingVideo && (
-                        <span className="ms-2">
-                          <small>处理中...</small>
-                        </span>
-                      )}
-                    </div>
-                    
-                    <video 
-                      ref={videoRef}
-                      src={hasNewVideo ? videoUrl : placeholderVideoUrl} 
-                      autoPlay 
-                      playsInline
-                      muted={!hasNewVideo} // 占位视频静音播放
-                      loop={!hasNewVideo} // 占位视频循环播放
-                      onEnded={handleVideoEnded}
-                      className="live-video"
-                      preload="auto"
-                    ></video>
-                  </div>
-                  
-                  <div className={`gloss-caption ${hasNewVideo ? 'new-content' : ''}`}>
-                    {glossSequence.length > 0 ? glossSequence.join(" ") : "等待手语翻译..."}
-                  </div>
-                  <p className="mt-2">{videoStatus}</p>
-                </div>
               </div>
             </div>
           </div>
