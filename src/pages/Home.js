@@ -16,9 +16,14 @@ const Home = () => {
   const [recognizedText, setRecognizedText] = useState("");
 
   // Callback from SignLanguageRecognition
-  const handleTextRecognized = (text) => {
+  // 添加第二个参数skipSpeech，用于决定是否跳过语音合成
+  const handleTextRecognized = (text, skipSpeech = false) => {
     setRecognizedText(text);
     console.log("手语识别文本:", text);
+    
+    // 如果skipSpeech为false，才执行语音合成
+    // 由于我们在SignLanguageRecognition组件中已经执行了语音合成
+    // 这里默认不再执行，避免重复朗读
   };
 
   return (
@@ -36,10 +41,7 @@ const Home = () => {
             onTextRecognized={handleTextRecognized}
           />
 
-          {/* Optionally display recognized text */}
-          <div className="mt-3">
-            <strong>Recognized Text:</strong> {recognizedText || "N/A"}
-          </div>
+          {/* 移除重复显示的识别文本 */}
         </div>
 
         {/* Right side: sign language generation container (which has speech recognition inside) */}

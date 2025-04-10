@@ -70,20 +70,22 @@ const SignLanguageRecognition = ({ signSpeakKey, onTextRecognized }) => {
       setRawPrediction(prediction);
       console.log("Raw Prediction:", prediction);
       if (prediction.prediction && Array.isArray(prediction.prediction)) {
-        const filteredText = prediction.prediction
-          .filter((item) => item.confidence > Math.log(0.5))
+        // 不再过滤结果，直接使用原始数据
+        const text = prediction.prediction
           .map((item) => item.prediction)
           .join(" ");
-        setRecognizedText(filteredText);
+        setRecognizedText(text);
 
         // 调用回调函数，将识别结果传递给父组件
-        if (onTextRecognized && filteredText) {
-          onTextRecognized(filteredText);
+        // 注意：这里不再传递过滤后的文本，而是传递原始文本
+        // 这样可以避免在Home.js中再次触发语音合成
+        if (onTextRecognized && text) {
+          onTextRecognized(text, true); // 添加第二个参数表示不要在Home.js中再次朗读
         }
 
-        // 播放音频播报
-        if (filteredText) {
-          const utterance = new SpeechSynthesisUtterance(filteredText);
+        // 播放音频播报（只在这里朗读一次）
+        if (text) {
+          const utterance = new SpeechSynthesisUtterance(text);
           speechSynthesis.speak(utterance);
         }
       }
@@ -131,9 +133,22 @@ const SignLanguageRecognition = ({ signSpeakKey, onTextRecognized }) => {
       </div>
 
       <div className="card mb-3">
-        <div className="card-header">Recognized Text (Confidence &gt; 0.5)</div>
+        <div className="card-header">Recognition Results</div>
         <div className="card-body">
-          <p>{recognizedText || "No recognized text yet."}</p>
+          {rawPrediction && rawPrediction.prediction && Array.isArray(rawPrediction.prediction) ? (
+            <div>
+              {rawPrediction.prediction.map((item, index) => (
+                <div key={index} className="mb-2">
+                  <strong>Prediction:</strong> {item.prediction}{' '}
+                  <span className="text-muted">
+                    (Confidence: {Math.exp(item.confidence).toFixed(4)})
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p>No recognized text yet.</p>
+          )}
         </div>
       </div>
     </div>
