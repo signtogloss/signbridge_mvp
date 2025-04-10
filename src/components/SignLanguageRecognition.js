@@ -14,6 +14,8 @@ const SignLanguageRecognition = ({ signSpeakKey, onTextRecognized }) => {
   const [localStream, setLocalStream] = useState(null);
   const [rawPrediction, setRawPrediction] = useState(null);
   const [recognizedText, setRecognizedText] = useState("");
+  // 添加语音合成状态跟踪
+  const [isSpeaking, setIsSpeaking] = useState(false);
   // 移除动画相关状态
   
   // 添加动画效果
@@ -84,8 +86,27 @@ const SignLanguageRecognition = ({ signSpeakKey, onTextRecognized }) => {
         }
 
         // 播放音频播报（只在这里朗读一次）
-        if (text) {
+        if (text && !isSpeaking) {
+          // 在播放新的语音前，先取消所有排队的语音，防止重复朗读
+          speechSynthesis.cancel();
           const utterance = new SpeechSynthesisUtterance(text);
+          
+          // 添加语音事件监听器
+          utterance.onstart = () => {
+            setIsSpeaking(true);
+            console.log("语音合成开始");
+          };
+          
+          utterance.onend = () => {
+            setIsSpeaking(false);
+            console.log("语音合成结束");
+          };
+          
+          utterance.onerror = () => {
+            setIsSpeaking(false);
+            console.log("语音合成出错");
+          };
+          
           speechSynthesis.speak(utterance);
         }
       }
