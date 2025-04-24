@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import SpeechToTextPage from './pages/SpeechToTextPage';
+import DualRecognitionPage from './pages/DualRecognitionPage';
 import './App.css';
 import './modern-styles.css';
 // animations.css已移除，不再需要动画效果
@@ -19,6 +20,7 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/new" element={<SpeechToTextPage />} />
+              <Route path="/dual-recognition" element={<DualRecognitionPage />} />
             </Routes>
           </div>     
     </div>

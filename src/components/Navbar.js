@@ -25,6 +25,9 @@ const Navbar = () => {
             <li className="nav-item">
               <Link className="nav-link hover-lift" to="/new">Speech2Text</Link>
             </li>
+            <li className="nav-item">
+              <Link className="nav-link hover-lift" to="/dual-recognition">Dual Recognition System</Link>
+            </li>
           </ul>
         </div>
       </div>
